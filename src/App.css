@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+.dice {
+  @apply flex space-x-6;
+}
+
+.die {
+  @apply mx-auto h-12 w-12 md:w-16 md:h-16 flex items-center justify-center rounded-lg text-2xl font-bold bg-white text-gray-800;
+}
+
+.die-d2 {
+  @apply border-2 border-amber-500;
+}
+
+.die-d4 {
+  @apply border-2 border-red-500;
+}
+
+.die-d6 {
+  @apply border border-gray-400;
+}
+
+.die-d8 {
+  @apply ring-2 ring-green-600;
+}
+
+.die-d10 {
+  @apply ring-3 ring-blue-600;
+}
+
+.die-d12 {
+  @apply ring-4 ring-purple-500/50 shadow-lg shadow-purple-400/50;
+}
+
+.die-d20 {
+  @apply ring-5 ring-orange-500/50 shadow-xl shadow-orange-300/50;
+}
