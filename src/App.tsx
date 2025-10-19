@@ -28,7 +28,9 @@ const game = new Game();
 const maxRollsPerRound = 5;
 const difficulty = 1.5;
 const baseScore = 100;
-const startingDice = Array.from({ length: 6 }, () => getRandomDie(6, 8, 10));
+const startingDice = Array.from({ length: 6 }, () =>
+  getRandomDie(6, 8, 10, 12)
+);
 
 function App() {
   const [dice, setDice] = useState(startingDice);
@@ -56,6 +58,7 @@ function App() {
 
   const addDie = () => {
     const possibleDice: number[] = [
+      ...Array(1).fill(1),
       ...Array(2).fill(2),
       ...Array(4).fill(4),
       ...Array(5).fill(6),
@@ -63,6 +66,10 @@ function App() {
       ...Array(5).fill(10),
       ...Array(5).fill(12),
       ...Array(4).fill(20),
+      ...Array(3).fill("odd"),
+      ...Array(3).fill("even"),
+      ...Array(2).fill("fib"),
+      ...Array(1).fill("multi"),
     ];
 
     setDice([...dice, getRandomDie(...possibleDice)]);
@@ -86,6 +93,24 @@ function App() {
 
     const sticker = StickerFactory.build(stickerValue);
     die.addSticker(sticker);
+    startNewRound();
+  };
+
+  const upgradeDie = () => {
+    const upgradableDice = dice.filter((die) => die.canUpgrade);
+    if (upgradableDice.length === 0) {
+      return;
+    }
+
+    const die =
+      upgradableDice[Math.floor(Math.random() * upgradableDice.length)];
+
+    const diceIndex = dice.indexOf(die);
+    dice[diceIndex] = die.upgrade();
+
+    const newDice = [...dice];
+
+    setDice(newDice);
     startNewRound();
   };
 
@@ -154,7 +179,7 @@ function App() {
         >
           Roll Die
         </button>
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-4 w-full md:w-1/2 lg:w-1/3 mx-auto">
+        <div className="grid grid-cols-5 md:grid-cols-6 gap-4 w-full md:w-1/2 lg:w-1/3 mx-auto">
           {dice.map((die, index) => (
             <DiceVisualizer key={index} die={die} />
           ))}
@@ -182,22 +207,30 @@ function App() {
       <div className="upgrade-notice mt-4 p-4 bg-yellow-100 border border-yellow-300 rounded">
         <p className="font-bold">Upgrade Available!</p>
         <p>1. Add a random die (d4 -&gt; d20)</p>
+        <p>2. Upgrade an random die one level.</p>
         <p>
-          2. Add EITHER a single multi sticker to a random die, or add TWO
+          3. Add EITHER a single multi sticker to a random die, or add TWO
           addition stickers, chosen at random.
         </p>
 
         <div className="mt-4">
           <button
             onClick={addDie}
-            className="bg-blue-500 text-white py-2 px-4 rounded mb-4 hover:bg-blue-600"
+            className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
           >
             Add Random Die
           </button>
 
           <button
+            onClick={upgradeDie}
+            className="bg-yellow-500 text-white py-2 px-4 rounded hover:bg-yellow-600 mx-4"
+          >
+            Upgrade Random Die
+          </button>
+
+          <button
             onClick={addSticker}
-            className="bg-green-500 text-white py-2 px-4 rounded mb-4 hover:bg-green-600 mx-4"
+            className="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600"
           >
             Add Sticker(s)
           </button>
@@ -207,15 +240,27 @@ function App() {
   };
 
   const Scorecard = () => {
+    const stickers = game.stickersApplied(dice);
     return (
       <div>
         <div className="total">Sum: {total}</div>
         {showBonuses && (
-          <div className="bonuses mt-4">
-            <p>Bonuses Applied:</p>
-            {bonuses.map((bonus, index) => (
-              <div key={index}>{bonus}</div>
-            ))}
+          <div>
+            <div className="bonuses mt-4">
+              <p>Bonuses Applied:</p>
+              {bonuses.map((bonus, index) => (
+                <div key={index}>{bonus}</div>
+              ))}
+            </div>
+
+            {stickers.length > 0 && (
+              <div className="stickers mt-4">
+                <p>Stickers Applied:</p>
+                {game.stickersApplied(dice).map((sticker, index) => (
+                  <div key={index}>{sticker}</div>
+                ))}
+              </div>
+            )}
           </div>
         )}
         {showFinalTotal && (

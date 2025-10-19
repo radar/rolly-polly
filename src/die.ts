@@ -1,5 +1,5 @@
 
-import { Addition as AdditionSticker, Multiplier as MultiplierSticker, type Sticker } from "./sticker"
+import { Addition as AdditionSticker, Multiplier as MultiplierSticker, StickerFactory, type Sticker } from "./sticker"
 
 type Die = BaseDie | DieD6 | DieD8 | DieD10 | DieD12 | DieD20
 type RolledValue = number | Sticker | null;
@@ -9,6 +9,7 @@ class BaseDie {
   className = ""
   faces: (number | Sticker)[];
   rolledValue: RolledValue = null;
+  canUpgrade = true;
 
   constructor(faces: (number | Sticker)[], rolledValue: RolledValue = null) {
     this.faces = faces;
@@ -91,6 +92,26 @@ class BaseDie {
       this.faces.push(sticker);
     }
   }
+
+  upgrade(): Die {
+    return this;
+  }
+}
+
+class DieD1 extends BaseDie {
+  name = "D1"
+  className = "die-d1"
+  constructor(rolledValue: RolledValue = null) {
+    super([1], rolledValue);
+  }
+
+  minPenalty(): number {
+    return 0;
+  }
+
+  upgrade(): Die {
+    return new DieD2(this.rolledValue);
+  }
 }
 
 class DieD2 extends BaseDie {
@@ -98,6 +119,14 @@ class DieD2 extends BaseDie {
   className = "die-d2"
   constructor(rolledValue: RolledValue = null) {
     super([1, 2], rolledValue);
+  }
+
+  minPenalty(): number {
+    return 0;
+  }
+
+  upgrade(): Die {
+    return new DieD4(this.rolledValue);
   }
 }
 
@@ -107,6 +136,10 @@ class DieD4 extends BaseDie {
   constructor(rolledValue: RolledValue = null) {
     super([1, 2, 3, 4], rolledValue);
   }
+
+  upgrade(): Die {
+    return new DieD6(this.rolledValue);
+  }
 }
 
 class DieD6 extends BaseDie {
@@ -114,6 +147,10 @@ class DieD6 extends BaseDie {
   className = "die-d6"
   constructor(rolledValue: RolledValue = null) {
     super([1, 2, 3, 4, 5, 6], rolledValue);
+  }
+
+  upgrade(): Die {
+    return new DieD8(this.rolledValue);
   }
 }
 
@@ -123,6 +160,10 @@ class DieD8 extends BaseDie {
   constructor(rolledValue: RolledValue = null) {
     super([1, 2, 3, 4, 5, 6, 7, 8], rolledValue);
   }
+
+  upgrade(): Die {
+    return new DieD10(this.rolledValue);
+  }
 }
 
 class DieD10 extends BaseDie {
@@ -130,6 +171,10 @@ class DieD10 extends BaseDie {
   className = "die-d10"
   constructor(rolledValue: RolledValue = null) {
     super([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], rolledValue);
+  }
+
+  upgrade(): Die {
+    return new DieD12(this.rolledValue);
   }
 }
 
@@ -139,20 +184,80 @@ class DieD12 extends BaseDie {
   constructor(rolledValue: RolledValue = null) {
     super([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], rolledValue);
   }
+
+  upgrade(): Die {
+    return new DieD20(this.rolledValue);
+  }
 }
 
 class DieD20 extends BaseDie {
   name = "D20";
   className = "die-d20"
+  canUpgrade = false;
   constructor(rolledValue: RolledValue = null) {
     super([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20], rolledValue);
   }
 }
 
-const getRandomDie = (...possibilities: number[]): Die => {
+class DieOdd extends BaseDie {
+  name = "Dodd";
+  className = "die-dodd"
+  canUpgrade = false;
+  constructor(rolledValue: RolledValue = null) {
+    super([1, 3, 5, 7, 9], rolledValue);
+  }
+}
+
+class DieEven extends BaseDie {
+  name = "Deven";
+  className = "die-deven"
+  canUpgrade = false;
+  constructor(rolledValue: RolledValue = null) {
+    super([2, 4, 6, 8, 10], rolledValue);
+  }
+}
+
+class DieFib extends BaseDie {
+  name = "Dfib";
+  className = "die-dfib"
+  canUpgrade = false;
+
+  // Default Fibonacci faces up to 21
+  constructor(faces: number[] = [1, 1, 2, 3, 5, 8, 13, 21], rolledValue: RolledValue = null) {
+    super(faces, rolledValue);
+  }
+}
+
+class DieMultiplier extends BaseDie {
+  name = "Dmulti";
+  className = "die-dmulti"
+  canUpgrade = false;
+
+  constructor(rolledValue: RolledValue = null) {
+    super([
+      StickerFactory.createMultiplier(1),
+      StickerFactory.createMultiplier(2),
+      StickerFactory.createMultiplier(3),
+      StickerFactory.createMultiplier(4),
+      StickerFactory.createMultiplier(0.8),
+    ], rolledValue);
+  }
+}
+
+const getRandomDie = (...possibilities: Array<number | string>): Die => {
   const randomIndex = Math.floor(Math.random() * possibilities.length);
 
   switch (possibilities[randomIndex]) {
+    case "odd":
+      return new DieOdd();
+    case "even":
+      return new DieEven();
+    case "fib":
+      return new DieFib();
+    case "multi":
+      return new DieMultiplier();
+    case 1:
+      return new DieD1();
     case 2:
       return new DieD2();
     case 4:
@@ -172,4 +277,4 @@ const getRandomDie = (...possibilities: number[]): Die => {
   }
 }
 
-export { BaseDie, DieD4, DieD6, DieD8, DieD10, DieD12, DieD20, type Die, getRandomDie };
+export { BaseDie, DieD1, DieD2, DieD4, DieD6, DieD8, DieD10, DieD12, DieD20, DieOdd, DieEven, DieFib, type Die, getRandomDie };

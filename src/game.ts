@@ -95,6 +95,21 @@ class Game {
     return bonuses;
   }
 
+  stickersApplied(dice: Dice): string[] {
+    const stickers: string[] = [];
+
+    dice.forEach((die, index) => {
+      const roll = die.rolledValue;
+      if (roll instanceof AdditionSticker) {
+        stickers.push(`Die ${index + 1}: +${roll.amount}`);
+      } else if (roll instanceof MultiplierSticker) {
+        stickers.push(`Die ${index + 1}: x${roll.factor}`);
+      }
+    });
+
+    return stickers;
+  }
+
   calculateBonuses(currentTotal: number, dice: Dice): number {
     const sixes = this.sixes(dice);
     const fives = this.fives(dice);

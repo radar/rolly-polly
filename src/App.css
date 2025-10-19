@@ -5,7 +5,24 @@
 }
 
 .die {
-  @apply mx-auto h-12 w-12 md:w-16 md:h-16 flex items-center justify-center rounded-lg text-2xl font-bold bg-white text-gray-800;
+  @apply mx-auto w-16 h-16 flex items-center justify-center rounded-lg text-2xl font-bold bg-white text-gray-800;
+}
+
+
+.die-dmulti {
+  @apply border-2 border-orange-500 bg-orange-400 text-white;
+}
+
+.die-dodd {
+  @apply border-2 border-pink-500 bg-green-400 text-pink-800;
+}
+
+.die-deven {
+  @apply border-2 border-rose-500 bg-yellow-400 text-rose-800;
+}
+
+.die-d1 {
+  @apply border-2 border-black bg-black text-white;
 }
 
 .die-d2 {
@@ -21,11 +38,11 @@
 }
 
 .die-d8 {
-  @apply ring-2 ring-green-600;
+  @apply ring-2 ring-green-600 shadow-sm shadow-green-400/50;
 }
 
 .die-d10 {
-  @apply ring-3 ring-blue-600;
+  @apply ring-3 ring-blue-600 shadow-md shadow-blue-400/50;
 }
 
 .die-d12 {
