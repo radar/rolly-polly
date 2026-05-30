@@ -17,6 +17,7 @@ export interface Modifier {
   perDieValueBonus?: number; // flat +N to the subtotal per scoring die
   penaltyScale?: number; // scale min-roll penalties
   maxBonusScale?: number; // scale max-roll bonuses
+  critMultiplier?: number; // each natural 20 multiplies the whole roll by this
   combo?: ComboMods;
 }
 
@@ -31,6 +32,7 @@ export const MODIFIERS: Modifier[] = [
   { name: "Combo Lockout", description: "No combo bonuses — subtotal and stickers only.", combo: { disabled: true } },
   { name: "Tax Season", description: "The target is 20% higher this round.", targetMultiplier: 1.2 },
   { name: "Clearance", description: "The target is 20% lower this round.", targetMultiplier: 0.8 },
+  { name: "Crit Day", description: "Each natural 20 on a d20 doubles your roll (stacks).", critMultiplier: 2 },
 ];
 
 // No modifier through round 3 (gentle onboarding); a random one every round

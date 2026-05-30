@@ -81,6 +81,8 @@ that changes how you play. They're a mix of boons, banes, and twists, e.g.:
 - **Bonus Roll** / **Drought** — 6 / 4 rolls this round.
 - **Combo Lockout** — no combo bonuses; subtotal and stickers only.
 - **Tax Season** / **Clearance** — target ±20%.
+- **Crit Day** — each natural 20 on a d20 doubles your roll (stacks), so it
+  rewards builds that have upgraded into d20s.
 
 A modifier is plain data (`src/modifier.ts`); `Game.calculate(dice, modifier?)`
 and the App read the fields they need, so scoring stays decoupled. Rounds 1-3

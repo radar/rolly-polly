@@ -30,7 +30,21 @@ class Game {
     total = this.calculateDiceBonuses(total, dice, modifier);
     total = this.calculateBonuses(total, dice, modifier);
     total = this.calculateStickers(total, dice);
+    total = this.applyCrit(total, dice, modifier);
     return total;
+  }
+
+  // Number of natural 20s rolled (only a d20 has a 20 face).
+  critCount(dice: Dice): number {
+    return dice.filter((die) => die.rolledValue === 20).length;
+  }
+
+  // "Crit Day": each natural 20 multiplies the whole roll. Applied last, after
+  // stickers, so it scales the full total.
+  applyCrit(total: number, dice: Dice, modifier: Modifier | null = null): number {
+    const mult = modifier?.critMultiplier;
+    if (!mult) return total;
+    return total * Math.pow(mult, this.critCount(dice));
   }
 
   calculateDiceBonuses(total: number, dice: Dice, modifier: Modifier | null = null): number {
@@ -88,6 +102,13 @@ class Game {
 
     if (minimumDice.length > 0) {
       bonuses.push(`Min Roll Penalty (${this.calculateMinimumPenalties(minimumDice) * penaltyScale})`);
+    }
+
+    if (modifier?.critMultiplier) {
+      const crits = this.critCount(dice);
+      if (crits > 0) {
+        bonuses.push(`Critical x${crits} (x${modifier.critMultiplier ** crits})`);
+      }
     }
 
     if (bonuses.length === 0) {

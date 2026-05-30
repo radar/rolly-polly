@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Game } from './game';
-import { DieD6 } from './die';
+import { DieD6, DieD20 } from './die';
 import { MODIFIERS, modifierForRound } from './modifier';
 
 const game = new Game();
@@ -57,5 +57,16 @@ describe('modifier effects on scoring', () => {
     expect(game.calculate(dice())).toBe(34); // 19 + 15
     // with a 4-length straight 2-3-4-5: + (5 * 6) = 30
     expect(game.calculate(dice(), { name: '', description: '', combo: { straightNeeds: 4 } })).toBe(64);
+  });
+
+  it('Crit Day doubles the roll per natural 20', () => {
+    const crit = { name: '', description: '', critMultiplier: 2 };
+    // single d20 showing 20: subtotal 20 + max bonus 10 = 30, then x2 = 60
+    expect(game.calculate([new DieD20(20)])).toBe(30);
+    expect(game.calculate([new DieD20(20)], crit)).toBe(60);
+    // a d20 not showing 20 does not crit (rolled 19: 19 subtotal, no max/min)
+    expect(game.calculate([new DieD20(19)], crit)).toBe(19);
+    // two natural 20s stack to x4: subtotal 40 + max 20 + pair of 20 (60) = 120, x4 = 480
+    expect(game.calculate([new DieD20(20), new DieD20(20)], crit)).toBe(480);
   });
 });
