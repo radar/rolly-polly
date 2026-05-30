@@ -234,12 +234,14 @@ class DieMultiplier extends BaseDie {
   canUpgrade = false;
 
   constructor(rolledValue: RolledValue = null) {
+    // Whole-total multiplier, so faces center near 1 with a real downside
+    // (a 0 "whiff") to keep it a gamble rather than free score. EV = 1.3.
     super([
+      StickerFactory.createMultiplier(0),
+      StickerFactory.createMultiplier(0.5),
       StickerFactory.createMultiplier(1),
       StickerFactory.createMultiplier(2),
       StickerFactory.createMultiplier(3),
-      StickerFactory.createMultiplier(4),
-      StickerFactory.createMultiplier(0.8),
     ], rolledValue);
   }
 }
