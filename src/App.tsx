@@ -4,8 +4,9 @@ import mousetrap from "mousetrap";
 
 import { type Die, getRandomDie } from "./die";
 
-import { StickerFactory } from "./sticker";
 import { Game } from "./game";
+import { BASE_SCORE, targetForRound } from "./progression";
+import { type Reward, generateRewards, applyReward } from "./reward";
 
 function DiceVisualizer({ die }: { die: Die }) {
   return (
@@ -26,8 +27,6 @@ function DiceVisualizer({ die }: { die: Die }) {
 
 const game = new Game();
 const maxRollsPerRound = 5;
-const difficulty = 1.5;
-const baseScore = 100;
 const startingDice = Array.from({ length: 6 }, () =>
   getRandomDie(6, 8, 10, 12)
 );
@@ -39,78 +38,28 @@ function App() {
   const [roll, setRoll] = useState(1);
   const [rolling, setRolling] = useState(false);
   const [upgrading, setUpgrading] = useState(false);
+  const [rewards, setRewards] = useState<Reward[]>([]);
   const [score, setScore] = useState(0);
-  const [targetScore, setTargetScore] = useState(baseScore);
+  const [targetScore, setTargetScore] = useState(BASE_SCORE);
   const [lost, setLost] = useState(false);
 
   const [showBonuses, setShowBonuses] = useState(false);
   const [showFinalTotal, setShowFinalTotal] = useState(false);
 
   const startNewRound = () => {
+    const nextRound = round + 1;
     setUpgrading(false);
+    setRewards([]);
     setScore(0);
-    setTargetScore(Math.ceil(targetScore * difficulty));
-    setRound(round + 1);
+    setTargetScore(targetForRound(nextRound));
+    setRound(nextRound);
     setRoll(1);
     setShowBonuses(false);
     setShowFinalTotal(false);
   };
 
-  const addDie = () => {
-    const possibleDice: number[] = [
-      ...Array(1).fill(1),
-      ...Array(2).fill(2),
-      ...Array(4).fill(4),
-      ...Array(5).fill(6),
-      ...Array(5).fill(8),
-      ...Array(5).fill(10),
-      ...Array(5).fill(12),
-      ...Array(4).fill(20),
-      ...Array(3).fill("odd"),
-      ...Array(3).fill("even"),
-      ...Array(2).fill("fib"),
-      ...Array(1).fill("multi"),
-    ];
-
-    setDice([...dice, getRandomDie(...possibleDice)]);
-    startNewRound();
-  };
-
-  const addSticker = () => {
-    const die = dice[Math.floor(Math.random() * dice.length)];
-
-    const possibleStickers = [
-      ...Array(10).fill("3x"),
-      ...Array(5).fill("4x"),
-      ...Array(3).fill("5x"),
-      ...Array(1).fill("10x"),
-      ...Array(20).fill("+50"),
-      ...Array(10).fill("+100"),
-    ];
-
-    const stickerValue =
-      possibleStickers[Math.floor(Math.random() * possibleStickers.length)];
-
-    const sticker = StickerFactory.build(stickerValue);
-    die.addSticker(sticker);
-    startNewRound();
-  };
-
-  const upgradeDie = () => {
-    const upgradableDice = dice.filter((die) => die.canUpgrade);
-    if (upgradableDice.length === 0) {
-      return;
-    }
-
-    const die =
-      upgradableDice[Math.floor(Math.random() * upgradableDice.length)];
-
-    const diceIndex = dice.indexOf(die);
-    dice[diceIndex] = die.upgrade();
-
-    const newDice = [...dice];
-
-    setDice(newDice);
+  const chooseReward = (reward: Reward) => {
+    setDice(applyReward(dice, reward));
     startNewRound();
   };
 
@@ -146,6 +95,7 @@ function App() {
           setScore(newScore);
           setRolling(false);
           if (newScore >= targetScore) {
+            setRewards(generateRewards(newDice));
             setUpgrading(true);
             return;
           }
@@ -205,35 +155,19 @@ function App() {
 
     return (
       <div className="upgrade-notice mt-4 p-4 bg-yellow-100 border border-yellow-300 rounded">
-        <p className="font-bold">Upgrade Available!</p>
-        <p>1. Add a random die (d4 -&gt; d20)</p>
-        <p>2. Upgrade an random die one level.</p>
-        <p>
-          3. Add EITHER a single multi sticker to a random die, or add TWO
-          addition stickers, chosen at random.
-        </p>
+        <p className="font-bold">Choose Your Reward!</p>
+        <p>Three rewards were rolled at random — pick one to keep.</p>
 
-        <div className="mt-4">
-          <button
-            onClick={addDie}
-            className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
-          >
-            Add Random Die
-          </button>
-
-          <button
-            onClick={upgradeDie}
-            className="bg-yellow-500 text-white py-2 px-4 rounded hover:bg-yellow-600 mx-4"
-          >
-            Upgrade Random Die
-          </button>
-
-          <button
-            onClick={addSticker}
-            className="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600"
-          >
-            Add Sticker(s)
-          </button>
+        <div className="mt-4 flex flex-col md:flex-row justify-center gap-4">
+          {rewards.map((reward, index) => (
+            <button
+              key={index}
+              onClick={() => chooseReward(reward)}
+              className="bg-blue-500 text-white py-3 px-4 rounded hover:bg-blue-600"
+            >
+              {reward.label}
+            </button>
+          ))}
         </div>
       </div>
     );

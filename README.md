@@ -1,73 +1,65 @@
-# React + TypeScript + Vite
+# Rolly Polly!
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A push-your-luck dice game. Each round you roll a pool of dice, stack up
+bonuses, and try to beat a rising target score. Clear a round and you pick one
+of three randomly-rolled rewards to make your dice stronger for the next.
 
-Currently, two official plugins are available:
+## Running
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+yarn install
+yarn dev      # start the dev server
+yarn build    # type-check + production build
+yarn test     # run the vitest suite
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## How to play
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- You start with **6 dice** (a random mix of d6/d8/d10/d12).
+- Each **round** gives you up to **5 rolls**. Press **Space** (or *Roll Die*) to
+  roll every die at once.
+- Your score for the round **accumulates across rolls**. Reach the **target
+  score** before your rolls run out to clear the round.
+- Run out of rolls below the target and you lose.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Scoring
+
+Each roll is scored as:
+
+1. **Subtotal** — the sum of all numeric die faces.
+2. **Die bonuses / penalties** — rolling a die's highest face adds a bonus;
+   rolling its lowest face applies a penalty (see `maxBonus` / `minPenalty` in
+   `src/die.ts`).
+3. **Combo bonuses** — matching faces and runs:
+   - Pair `+10`, Triple `+20`, Quad `+40`, Five-of-a-kind `+50`, Six-of-a-kind `+100`
+   - **Straight** (five consecutive values) `+30`
+4. **Stickers** — additions are applied first, then multipliers (multipliers are
+   applied last, so they scale everything).
+
+The full pipeline lives in `Game.calculate` (`src/game.ts`).
+
+## Difficulty curve
+
+The target score for each round is computed by `targetForRound` in
+`src/progression.ts`. Rather than a flat geometric jump, the ratio between
+consecutive rounds **decays from 1.5 toward 1**, so the curve climbs steeply
+early then eases off — a smoother ramp against the player's roughly one-upgrade-
+per-round power growth.
+
 ```
+round:  1    2    3    4    5    6    7
+target: 100  150  216  300  404  531  683
+```
+
+## Rewards
+
+Clear a round and three concrete rewards are **rolled at random** — typically one
+of each kind:
+
+- **New die** — adds a randomly-rolled die to your pool.
+- **Upgrade** — bumps one die up a level (e.g. d6 → d8).
+- **Sticker** — attaches a multiplier (`x3`…`x10`) or addition (`+50`/`+100`)
+  sticker to one die.
+
+Generation is random, but the **choice is yours** — pick the one option that best
+fits your pool. Reward logic lives in `src/reward.ts`.
