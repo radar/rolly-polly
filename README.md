@@ -16,7 +16,7 @@ yarn test     # run the vitest suite
 ## How to play
 
 - You start with **6 dice** (a random mix of d6/d8/d10/d12).
-- Each **round** gives you up to **5 rolls**. Press **Space** (or *Roll Die*) to
+- Each **round** gives you up to **5 rolls**. Press **Space** (or _Roll Die_) to
   roll every die at once.
 - Your score for the round **accumulates across rolls**. Reach the **target
   score** before your rolls run out to clear the round.
@@ -79,7 +79,8 @@ that changes how you play. They're a mix of boons, banes, and twists, e.g.:
 - **Straight Fever** — straights need only 4 in a row.
 - **Big Numbers** — every scoring die is worth +1.
 - **Bonus Roll** / **Drought** — 6 / 4 rolls this round.
-- **Combo Lockout** — no combo bonuses; subtotal and stickers only.
+- **Combo Lockout** — no combo bonuses, but the target is 40% lower (a raw-value
+  round, not a wall).
 - **Tax Season** / **Clearance** — target ±20%.
 - **Crit Day** — each natural 20 on a d20 doubles your roll (stacks), so it
   rewards builds that have upgraded into d20s.

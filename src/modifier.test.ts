@@ -34,6 +34,12 @@ describe('modifier effects on scoring', () => {
     expect(game.calculate(pairDice(), { name: '', description: '', combo: { disabled: true } })).toBe(24);
   });
 
+  it('Combo Lockout pairs the combo ban with a lower target so it is not a wall', () => {
+    const lockout = MODIFIERS.find((m) => m.name === 'Combo Lockout')!;
+    expect(lockout.combo?.disabled).toBe(true);
+    expect(lockout.targetMultiplier).toBeLessThan(1);
+  });
+
   it('Big Numbers adds the per-die bonus to the subtotal', () => {
     // 36 + (1 * 5 dice) = 41
     expect(game.calculate(pairDice(), { name: '', description: '', perDieValueBonus: 1 })).toBe(41);
