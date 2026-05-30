@@ -31,10 +31,10 @@ describe('applyReward', () => {
     expect(next[1]).toBe(die);
   });
 
-  it('upgrades the die at the given index', () => {
-    const dice = [new DieD6()];
-    const next = applyReward(dice, { kind: 'upgrade', label: '', dieIndex: 0 });
-    expect(next[0].name).toBe('D8');
+  it('upgrades every upgradable die one tier, leaving maxed dice alone', () => {
+    const dice = [new DieD6(), new DieD6(), new DieD20()];
+    const next = applyReward(dice, { kind: 'upgrade', label: '' });
+    expect(next.map((d) => d.name)).toEqual(['D8', 'D8', 'D20']);
   });
 
   it('applies a multiplier sticker to the die at the given index', () => {

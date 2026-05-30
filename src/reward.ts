@@ -5,7 +5,7 @@ import { StickerFactory, type Sticker } from "./sticker";
 // is random; selection is deliberate — the player picks one of three.
 export type Reward =
   | { kind: "add-die"; label: string; die: Die }
-  | { kind: "upgrade"; label: string; dieIndex: number }
+  | { kind: "upgrade"; label: string }
   | { kind: "sticker"; label: string; dieIndex: number; sticker: Sticker };
 
 // Weighted pool of dice that can be granted (mirrors the original upgrade odds).
@@ -48,10 +48,11 @@ function makeAddDieReward(): Reward {
   return { kind: "add-die", die, label: `New ${die.name}` };
 }
 
-function makeUpgradeReward(candidates: Array<{ die: Die; index: number }>): Reward {
-  const { die, index } = pick(candidates);
-  const next = die.upgrade(); // throwaway, used only for its name
-  return { kind: "upgrade", dieIndex: index, label: `Upgrade ${die.name} → ${next.name}` };
+function makeUpgradeReward(upgradableCount: number): Reward {
+  // Upgrading a single die barely moves the needle, so this lifts every
+  // upgradable die one tier — it scales with the pool and trades off against
+  // add-die (more dice / combos) vs sticker (multipliers).
+  return { kind: "upgrade", label: `Upgrade all dice +1 tier (${upgradableCount} dice)` };
 }
 
 function makeStickerReward(dice: Die[]): Reward {
@@ -70,13 +71,11 @@ function makeStickerReward(dice: Die[]): Reward {
 // one of each kind (add / upgrade / sticker) when possible; falls back to an
 // extra die when nothing is upgradable.
 export function generateRewards(dice: Die[]): Reward[] {
-  const upgradable = dice
-    .map((die, index) => ({ die, index }))
-    .filter(({ die }) => die.canUpgrade);
+  const upgradableCount = dice.filter((die) => die.canUpgrade).length;
 
   return [
     makeAddDieReward(),
-    upgradable.length > 0 ? makeUpgradeReward(upgradable) : makeAddDieReward(),
+    upgradableCount > 0 ? makeUpgradeReward(upgradableCount) : makeAddDieReward(),
     makeStickerReward(dice),
   ];
 }
@@ -86,11 +85,8 @@ export function applyReward(dice: Die[], reward: Reward): Die[] {
   switch (reward.kind) {
     case "add-die":
       return [...dice, reward.die];
-    case "upgrade": {
-      const next = [...dice];
-      next[reward.dieIndex] = next[reward.dieIndex].upgrade();
-      return next;
-    }
+    case "upgrade":
+      return dice.map((die) => (die.canUpgrade ? die.upgrade() : die));
     case "sticker":
       dice[reward.dieIndex].addSticker(reward.sticker);
       return [...dice];

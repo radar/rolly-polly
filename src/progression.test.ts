@@ -8,7 +8,7 @@ describe('targetForRound', () => {
 
   it('follows the smoothed, decaying-ratio curve', () => {
     expect([1, 2, 3, 4, 5, 6, 7].map((round) => targetForRound(round))).toEqual([
-      100, 150, 216, 300, 404, 531, 683,
+      100, 138, 181, 229, 282, 339, 401,
     ]);
   });
 

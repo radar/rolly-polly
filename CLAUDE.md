@@ -52,7 +52,11 @@ testable without rendering.
 
 ## Difficulty curve
 
-`targetForRound` multiplies the base (100) by a ratio that **decays from 1.5
+`targetForRound` multiplies the base (100) by a ratio that **decays from 1.38
 toward 1** each round, so difficulty ramps smoothly rather than exploding
-geometrically. Tune via `BASE_SCORE`, `INITIAL_RATIO_BONUS`, and `RATIO_DECAY`
-in `src/progression.ts`.
+geometrically. The constants (`BASE_SCORE`, `INITIAL_RATIO_BONUS`, `RATIO_DECAY`
+in `src/progression.ts`) were tuned by simulation so targets grow at roughly the
+pace rewards add power. If you change reward strength (`src/reward.ts`) or
+scoring (`src/game.ts`), re-check this curve — a throwaway sim that drives the
+real modules over many runs is the fastest way to spot a new wall or a runaway
+snowball.

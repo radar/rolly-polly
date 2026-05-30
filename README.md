@@ -42,13 +42,14 @@ The full pipeline lives in `Game.calculate` (`src/game.ts`).
 
 The target score for each round is computed by `targetForRound` in
 `src/progression.ts`. Rather than a flat geometric jump, the ratio between
-consecutive rounds **decays from 1.5 toward 1**, so the curve climbs steeply
-early then eases off — a smoother ramp against the player's roughly one-upgrade-
-per-round power growth.
+consecutive rounds **decays from 1.38 toward 1**, so the curve climbs steeply
+early then eases off. The constants were tuned by simulation so targets grow at
+roughly the pace rewards add power — runs last and reward choices matter,
+instead of every game hitting a wall around round 7.
 
 ```
 round:  1    2    3    4    5    6    7
-target: 100  150  216  300  404  531  683
+target: 100  138  181  229  282  339  401
 ```
 
 ## Rewards
@@ -56,8 +57,9 @@ target: 100  150  216  300  404  531  683
 Clear a round and three concrete rewards are **rolled at random** — typically one
 of each kind:
 
-- **New die** — adds a randomly-rolled die to your pool.
-- **Upgrade** — bumps one die up a level (e.g. d6 → d8).
+- **New die** — adds a randomly-rolled die to your pool (more dice, more combos).
+- **Upgrade** — bumps **every** upgradable die up one tier (e.g. d6 → d8). Scales
+  with your pool, so it grows in value as the game goes on.
 - **Sticker** — attaches a multiplier (`x3`…`x10`) or addition (`+50`/`+100`)
   sticker to one die.
 
