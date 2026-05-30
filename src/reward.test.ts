@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateRewards, applyReward } from './reward';
+import { generateRewards, applyReward, MAX_DICE } from './reward';
 import { DieD6, DieD20 } from './die';
 import { Addition, Multiplier } from './sticker';
 
@@ -19,6 +19,16 @@ describe('generateRewards', () => {
     expect(rewards).toHaveLength(3);
     // No upgrade reward can target a maxed-out die.
     expect(rewards.some((r) => r.kind === 'upgrade')).toBe(false);
+  });
+
+  it('never offers the upgrade reward more than once at the dice cap', () => {
+    // A full pool of upgradable dice: add-die is gated, so the old code
+    // produced two identical "upgrade all dice" options.
+    const dice = Array.from({ length: MAX_DICE }, () => new DieD6());
+    const rewards = generateRewards(dice);
+    expect(rewards).toHaveLength(3);
+    expect(rewards.filter((r) => r.kind === 'upgrade').length).toBe(1);
+    expect(rewards.some((r) => r.kind === 'add-die')).toBe(false);
   });
 });
 

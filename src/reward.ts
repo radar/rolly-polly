@@ -72,22 +72,27 @@ function makeStickerReward(dice: Die[]): Reward {
 }
 
 // Produce three concrete reward options for the player to choose from. Offers
-// one of each kind (add / upgrade / sticker) when possible; falls back to an
-// extra die when nothing is upgradable.
+// one of each kind (add / upgrade / sticker) when possible. "Upgrade all dice"
+// is a single global action, so it appears at most once; add-die slots are
+// dropped at the dice cap, and any remaining slots fall back to stickers (each
+// sticker offer is a distinct, concrete roll, so those may repeat).
 export function generateRewards(dice: Die[]): Reward[] {
+  const canAddDie = dice.length < MAX_DICE;
   const upgradableCount = dice.filter((die) => die.canUpgrade).length;
-  const atCap = dice.length >= MAX_DICE;
 
-  // Below the cap: add-die / upgrade / sticker. At the cap: add-die slots are
-  // replaced (upgrade if anything can upgrade, otherwise another sticker).
-  const nonDieFallback = () =>
-    upgradableCount > 0 ? makeUpgradeReward(upgradableCount) : makeStickerReward(dice);
+  // One slot of each available kind first (upgrade only ever once), then fill
+  // any remaining slots with a fallback that is never another upgrade.
+  const kinds: Reward["kind"][] = [];
+  if (canAddDie) kinds.push("add-die");
+  if (upgradableCount > 0) kinds.push("upgrade");
+  kinds.push("sticker");
+  while (kinds.length < 3) kinds.push(canAddDie ? "add-die" : "sticker");
 
-  return [
-    atCap ? nonDieFallback() : makeAddDieReward(),
-    upgradableCount > 0 ? makeUpgradeReward(upgradableCount) : (atCap ? makeStickerReward(dice) : makeAddDieReward()),
-    makeStickerReward(dice),
-  ];
+  return kinds.slice(0, 3).map((kind) => {
+    if (kind === "add-die") return makeAddDieReward();
+    if (kind === "upgrade") return makeUpgradeReward(upgradableCount);
+    return makeStickerReward(dice);
+  });
 }
 
 // Apply the chosen reward, returning the new dice array.
