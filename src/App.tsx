@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
 import mousetrap from "mousetrap";
 
@@ -25,14 +25,104 @@ function DiceVisualizer({ die }: { die: Die }) {
   );
 }
 
+function Scorecard({
+  dice,
+  total,
+  bonuses,
+  finalTotal,
+  showBonuses,
+  showFinalTotal,
+}: {
+  dice: Die[];
+  total: number;
+  bonuses: string[];
+  finalTotal: number;
+  showBonuses: boolean;
+  showFinalTotal: boolean;
+}) {
+  const stickers = game.stickersApplied(dice);
+  return (
+    <div>
+      <div className="total">Sum: {total}</div>
+      {showBonuses && (
+        <div>
+          <div className="bonuses mt-4">
+            <p>Bonuses Applied:</p>
+            {bonuses.map((bonus, index) => (
+              <div key={index}>{bonus}</div>
+            ))}
+          </div>
+
+          {stickers.length > 0 && (
+            <div className="stickers mt-4">
+              <p>Stickers Applied:</p>
+              {stickers.map((sticker, index) => (
+                <div key={index}>{sticker}</div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {showFinalTotal && (
+        <div className="final-total mt-4 text-2xl font-bold">
+          Final Total: {finalTotal}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Roller({
+  dice,
+  rolling,
+  onRoll,
+  total,
+  bonuses,
+  finalTotal,
+  showBonuses,
+  showFinalTotal,
+}: {
+  dice: Die[];
+  rolling: boolean;
+  onRoll: () => void;
+  total: number;
+  bonuses: string[];
+  finalTotal: number;
+  showBonuses: boolean;
+  showFinalTotal: boolean;
+}) {
+  return (
+    <div className="text-center">
+      <button
+        onClick={onRoll}
+        disabled={rolling}
+        className="bg-blue-500 text-white py-2 px-4 rounded mb-4 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Roll Die
+      </button>
+      <div className="grid grid-cols-5 md:grid-cols-6 gap-4 w-full md:w-1/2 lg:w-1/3 mx-auto">
+        {dice.map((die, index) => (
+          <DiceVisualizer key={index} die={die} />
+        ))}
+      </div>
+      <Scorecard
+        dice={dice}
+        total={total}
+        bonuses={bonuses}
+        finalTotal={finalTotal}
+        showBonuses={showBonuses}
+        showFinalTotal={showFinalTotal}
+      />
+    </div>
+  );
+}
+
 const game = new Game();
 const maxRollsPerRound = 5;
-const startingDice = Array.from({ length: 6 }, () =>
-  getRandomDie(6, 8, 10, 12)
-);
+const freshDice = () => Array.from({ length: 6 }, () => getRandomDie(6, 8, 10, 12));
 
 function App() {
-  const [dice, setDice] = useState(startingDice);
+  const [dice, setDice] = useState(freshDice);
 
   const [round, setRound] = useState(1);
   const [roll, setRoll] = useState(1);
@@ -61,6 +151,20 @@ function App() {
   const chooseReward = (reward: Reward) => {
     setDice(applyReward(dice, reward));
     startNewRound();
+  };
+
+  const restart = () => {
+    setDice(freshDice());
+    setRound(1);
+    setRoll(1);
+    setRolling(false);
+    setUpgrading(false);
+    setRewards([]);
+    setScore(0);
+    setTargetScore(BASE_SCORE);
+    setLost(false);
+    setShowBonuses(false);
+    setShowFinalTotal(false);
   };
 
   const rollDie = () => {
@@ -109,102 +213,22 @@ function App() {
     }, intervalMs);
   };
 
-  mousetrap.bind("space", () => {
-    if (!rolling && !upgrading && !lost) {
-      rollDie();
-    }
+  // Bind Space to roll. Lives in an effect (not the render body) with cleanup,
+  // so we never leave a stale handler bound across re-renders.
+  useEffect(() => {
+    mousetrap.bind("space", () => {
+      if (!rolling && !upgrading && !lost) {
+        rollDie();
+      }
+    });
+    return () => {
+      mousetrap.unbind("space");
+    };
   });
 
   const total = game.calculateSubTotal(dice);
   const bonuses = game.bonusesApplied(dice);
   const finalTotal = game.calculate(dice);
-
-  const Roller = () => {
-    return (
-      <div className="text-center">
-        <button
-          onClick={rollDie}
-          disabled={rolling}
-          className="bg-blue-500 text-white py-2 px-4 rounded mb-4 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Roll Die
-        </button>
-        <div className="grid grid-cols-5 md:grid-cols-6 gap-4 w-full md:w-1/2 lg:w-1/3 mx-auto">
-          {dice.map((die, index) => (
-            <DiceVisualizer key={index} die={die} />
-          ))}
-        </div>
-        <Scorecard />
-      </div>
-    );
-  };
-
-  const GameApp = () => {
-    if (lost) {
-      return (
-        <div className="lost-notice mt-4 p-4 bg-red-100 border border-red-300 rounded">
-          <p className="font-bold">You Lost!</p>
-          <p>Better luck next time!</p>
-        </div>
-      );
-    }
-
-    if (!upgrading) {
-      return <Roller />;
-    }
-
-    return (
-      <div className="upgrade-notice mt-4 p-4 bg-yellow-100 border border-yellow-300 rounded">
-        <p className="font-bold">Choose Your Reward!</p>
-        <p>Three rewards were rolled at random — pick one to keep.</p>
-
-        <div className="mt-4 flex flex-col md:flex-row justify-center gap-4">
-          {rewards.map((reward, index) => (
-            <button
-              key={index}
-              onClick={() => chooseReward(reward)}
-              className="bg-blue-500 text-white py-3 px-4 rounded hover:bg-blue-600"
-            >
-              {reward.label}
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  const Scorecard = () => {
-    const stickers = game.stickersApplied(dice);
-    return (
-      <div>
-        <div className="total">Sum: {total}</div>
-        {showBonuses && (
-          <div>
-            <div className="bonuses mt-4">
-              <p>Bonuses Applied:</p>
-              {bonuses.map((bonus, index) => (
-                <div key={index}>{bonus}</div>
-              ))}
-            </div>
-
-            {stickers.length > 0 && (
-              <div className="stickers mt-4">
-                <p>Stickers Applied:</p>
-                {game.stickersApplied(dice).map((sticker, index) => (
-                  <div key={index}>{sticker}</div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-        {showFinalTotal && (
-          <div className="final-total mt-4 text-2xl font-bold">
-            Final Total: {finalTotal}
-          </div>
-        )}
-      </div>
-    );
-  };
 
   return (
     <>
@@ -220,7 +244,47 @@ function App() {
               Score: {score} / {targetScore}
             </div>
           </div>
-          <GameApp />
+
+          {lost ? (
+            <div className="lost-notice mt-4 p-4 bg-red-100 border border-red-300 rounded">
+              <p className="font-bold">You Lost!</p>
+              <p>You made it to round {round}.</p>
+              <button
+                onClick={restart}
+                className="mt-4 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
+              >
+                Play Again
+              </button>
+            </div>
+          ) : upgrading ? (
+            <div className="upgrade-notice mt-4 p-4 bg-yellow-100 border border-yellow-300 rounded">
+              <p className="font-bold">Choose Your Reward!</p>
+              <p>Three rewards were rolled at random — pick one to keep.</p>
+
+              <div className="mt-4 flex flex-col md:flex-row justify-center gap-4">
+                {rewards.map((reward, index) => (
+                  <button
+                    key={index}
+                    onClick={() => chooseReward(reward)}
+                    className="bg-blue-500 text-white py-3 px-4 rounded hover:bg-blue-600"
+                  >
+                    {reward.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <Roller
+              dice={dice}
+              rolling={rolling}
+              onRoll={rollDie}
+              total={total}
+              bonuses={bonuses}
+              finalTotal={finalTotal}
+              showBonuses={showBonuses}
+              showFinalTotal={showFinalTotal}
+            />
+          )}
         </div>
       </div>
     </>
