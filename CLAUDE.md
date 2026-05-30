@@ -43,7 +43,8 @@ testable without rendering.
 - `src/reward.ts` — `generateRewards(dice)` rolls three concrete reward options;
   `applyReward(dice, reward)` applies the player's pick. Reward is a discriminated
   union (`add-die` | `upgrade` | `sticker`). `upgrade` lifts every upgradable die
-  one tier; `add-die` is gated by `MAX_DICE` (pool cap).
+  one tier (and grants a bonus die via `bonusDie` when fewer than 2 dice are
+  upgradable, so the path doesn't stall); `add-die` is gated by `MAX_DICE`.
 - `src/App.tsx` — the only React component. Owns all game state (round, roll,
   score, target, dice, rewards) and the roll/score/reward loop.
 

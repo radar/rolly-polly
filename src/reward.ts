@@ -5,7 +5,7 @@ import { StickerFactory, type Sticker } from "./sticker";
 // is random; selection is deliberate — the player picks one of three.
 export type Reward =
   | { kind: "add-die"; label: string; die: Die }
-  | { kind: "upgrade"; label: string }
+  | { kind: "upgrade"; label: string; bonusDie?: Die }
   | { kind: "sticker"; label: string; dieIndex: number; sticker: Sticker };
 
 // Weighted pool of dice that can be granted (mirrors the original upgrade odds).
@@ -52,11 +52,22 @@ function makeAddDieReward(): Reward {
   return { kind: "add-die", die, label: `New ${die.name}` };
 }
 
-function makeUpgradeReward(upgradableCount: number): Reward {
-  // Upgrading a single die barely moves the needle, so this lifts every
-  // upgradable die one tier — it scales with the pool and trades off against
-  // add-die (more dice / combos) vs sticker (multipliers).
-  return { kind: "upgrade", label: `Upgrade all dice +1 tier (${upgradableCount} dice)` };
+function makeUpgradeReward(dice: Die[]): Reward {
+  // Lifts every upgradable die one tier — it scales with the pool and trades
+  // off against add-die (more dice / combos) vs sticker (multipliers).
+  //
+  // The upgrade path runs out of gas once dice max out (d20 can't upgrade), so
+  // when fewer than 2 dice are still upgradable we also grant a fresh die. The
+  // new die is itself upgradable, refilling the pipeline, and adds combo
+  // frequency — keeping the upgrade path competitive late game.
+  const upgradableCount = dice.filter((die) => die.canUpgrade).length;
+  const bonusDie = upgradableCount < 2 && dice.length < MAX_DICE ? getRandomDie(...DIE_POOL) : undefined;
+
+  const label = bonusDie
+    ? `Upgrade dice +1 tier & add ${bonusDie.name}`
+    : `Upgrade all dice +1 tier (${upgradableCount} dice)`;
+
+  return { kind: "upgrade", label, bonusDie };
 }
 
 function makeStickerReward(dice: Die[]): Reward {
@@ -90,7 +101,7 @@ export function generateRewards(dice: Die[]): Reward[] {
 
   return kinds.slice(0, 3).map((kind) => {
     if (kind === "add-die") return makeAddDieReward();
-    if (kind === "upgrade") return makeUpgradeReward(upgradableCount);
+    if (kind === "upgrade") return makeUpgradeReward(dice);
     return makeStickerReward(dice);
   });
 }
@@ -100,8 +111,10 @@ export function applyReward(dice: Die[], reward: Reward): Die[] {
   switch (reward.kind) {
     case "add-die":
       return [...dice, reward.die];
-    case "upgrade":
-      return dice.map((die) => (die.canUpgrade ? die.upgrade() : die));
+    case "upgrade": {
+      const upgraded = dice.map((die) => (die.canUpgrade ? die.upgrade() : die));
+      return reward.bonusDie ? [...upgraded, reward.bonusDie] : upgraded;
+    }
     case "sticker":
       dice[reward.dieIndex].addSticker(reward.sticker);
       return [...dice];

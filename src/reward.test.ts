@@ -47,6 +47,25 @@ describe('applyReward', () => {
     expect(next.map((d) => d.name)).toEqual(['D8', 'D8', 'D20']);
   });
 
+  it('grants a bonus die with the upgrade when fewer than 2 dice are upgradable', () => {
+    // only the D6 can upgrade; the upgrade path would otherwise stall here
+    const dice = [new DieD20(), new DieD20(), new DieD6()];
+    const upgrade = generateRewards(dice).find((r) => r.kind === 'upgrade');
+    expect(upgrade?.kind).toBe('upgrade');
+    if (upgrade?.kind === 'upgrade') {
+      expect(upgrade.bonusDie).toBeDefined();
+      const next = applyReward(dice, upgrade);
+      expect(next).toHaveLength(4); // D6 -> D8, two D20s, plus the bonus die
+      expect(next.map((d) => d.name)).toContain('D8');
+    }
+  });
+
+  it('does not grant a bonus die when 2 or more dice are upgradable', () => {
+    const dice = [new DieD6(), new DieD6(), new DieD20()];
+    const upgrade = generateRewards(dice).find((r) => r.kind === 'upgrade');
+    if (upgrade?.kind === 'upgrade') expect(upgrade.bonusDie).toBeUndefined();
+  });
+
   it('applies a multiplier sticker to the die at the given index', () => {
     const dice = [new DieD6()];
     const before = dice[0].faces.length;

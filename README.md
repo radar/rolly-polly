@@ -63,7 +63,9 @@ of each kind:
   up to a cap of 12 dice. Past the cap this reward is replaced by an upgrade or
   sticker, so adding dice can't be the only strategy.
 - **Upgrade** — bumps **every** upgradable die up one tier (e.g. d6 → d8). Scales
-  with your pool, so it grows in value as the game goes on.
+  with your pool, so it grows in value as the game goes on. When fewer than two
+  dice can still be upgraded, it also grants a fresh (upgradable) die so the path
+  doesn't stall out once most dice are maxed.
 - **Sticker** — attaches a multiplier (`x3`…`x10`) or addition (`+50`/`+100`)
   sticker to one die.
 
