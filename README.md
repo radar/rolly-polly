@@ -35,8 +35,10 @@ Each roll is scored as:
    - Pair `value×3`, Triple `value×6`, Quad `value×8`, Five-of-a-kind `value×10`,
      Six-of-a-kind `value×16`
    - **Straight** (five consecutive values) — highest value in the run `×6`
-4. **Stickers** — additions are applied first, then multipliers (multipliers are
-   applied last, so they scale everything).
+4. **Stickers** — additions are applied first, then multipliers, which scale the
+   whole total. Multipliers **stack additively** (`1 + Σ(factor − 1)`), so a lone
+   x3 triples but x3 + x4 gives x6, not x12 — several landing at once can't
+   explode the score.
 
 The full pipeline lives in `Game.calculate` (`src/game.ts`).
 

@@ -154,6 +154,7 @@ class Game {
   calculateStickers(currentTotal: number, dice: Dice): number {
     let total = currentTotal;
 
+    // Additions first.
     dice.forEach((die) => {
       const roll = die.rolledValue;
       if (roll instanceof AdditionSticker) {
@@ -161,12 +162,21 @@ class Game {
       }
     });
 
+    // Multipliers stack ADDITIVELY, not multiplicatively: the combined factor
+    // is 1 + Σ(factor - 1). A lone x3 still triples, but x3 + x4 gives x6 (not
+    // x12), so several stickers landing at once can't explode the score the
+    // way a runaway multiplicative product did. Clamped at 0 (sub-1 factors,
+    // e.g. the Dmulti die, can pull it down but never negative).
+    let multiplierBonus = 0;
     dice.forEach((die) => {
       const roll = die.rolledValue;
       if (roll instanceof MultiplierSticker) {
-        total *= roll.factor;
+        multiplierBonus += roll.factor - 1;
       }
     });
+    if (multiplierBonus !== 0) {
+      total *= Math.max(0, 1 + multiplierBonus);
+    }
 
     return total;
   }

@@ -190,8 +190,9 @@ it('calculates a total score with a pair', () => {
     // Pair of 4 = 4 * 3 = 12
     // Min roll penalty = -3
     // Total before stickers = 26
-    // After stickers = 26 * 2 * 3 = 156
-    expect(game.calculate(dice)).toBe(156);
+    // Multipliers stack additively: 1 + (2-1) + (3-1) = 4
+    // After stickers = 26 * 4 = 104
+    expect(game.calculate(dice)).toBe(104);
   });
 
   it('calculates a total using an addition sticker and a multiplier sticker', () => {
