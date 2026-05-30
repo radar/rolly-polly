@@ -57,11 +57,11 @@ function makeUpgradeReward(dice: Die[]): Reward {
   // off against add-die (more dice / combos) vs sticker (multipliers).
   //
   // The upgrade path runs out of gas once dice max out (d20 can't upgrade), so
-  // when fewer than 2 dice are still upgradable we also grant a fresh die. The
+  // when 2 or fewer dice are still upgradable we also grant a fresh die. The
   // new die is itself upgradable, refilling the pipeline, and adds combo
-  // frequency — keeping the upgrade path competitive late game.
+  // frequency — this brings the upgrade path to ~parity with dice/stickers.
   const upgradableCount = dice.filter((die) => die.canUpgrade).length;
-  const bonusDie = upgradableCount < 2 && dice.length < MAX_DICE ? getRandomDie(...DIE_POOL) : undefined;
+  const bonusDie = upgradableCount <= 2 && dice.length < MAX_DICE ? getRandomDie(...DIE_POOL) : undefined;
 
   const label = bonusDie
     ? `Upgrade dice +1 tier & add ${bonusDie.name}`
