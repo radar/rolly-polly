@@ -35,6 +35,11 @@ testable without rendering.
   `StickerFactory.build("3x" | "+50")`.
 - `src/progression.ts` — `targetForRound(round)`: the per-round target score
   curve (decaying-ratio, see below).
+- `src/modifier.ts` — `Modifier` (plain-data per-round rule) and
+  `modifierForRound(round)` (random from round 4+, null through round 3).
+  `Game.calculate(dice, modifier?)` reads its combo/penalty/bonus fields; the
+  App reads `rolls` and `targetMultiplier`. Scoring stays decoupled — modifiers
+  are just data the engine consults.
 - `src/reward.ts` — `generateRewards(dice)` rolls three concrete reward options;
   `applyReward(dice, reward)` applies the player's pick. Reward is a discriminated
   union (`add-die` | `upgrade` | `sticker`). `upgrade` lifts every upgradable die

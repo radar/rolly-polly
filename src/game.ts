@@ -1,5 +1,6 @@
 import { Addition as AdditionSticker, Multiplier as MultiplierSticker, type Sticker } from "./sticker"
 import { BaseDie, DieD6 } from "./die"
+import type { Modifier, ComboMods } from "./modifier"
 
 type Die = BaseDie | DieD6;
 type Roll = number | Sticker | null;
@@ -21,17 +22,20 @@ class Game {
     // Initialization logic goes here
   }
 
-  calculate(dice: Dice): number {
+  calculate(dice: Dice, modifier: Modifier | null = null): number {
     let total = this.calculateSubTotal(dice);
-    total = this.calculateDiceBonuses(total, dice);
-    total = this.calculateBonuses(total, dice);
+    if (modifier?.perDieValueBonus) {
+      total += modifier.perDieValueBonus * this.numericRolls(dice).length;
+    }
+    total = this.calculateDiceBonuses(total, dice, modifier);
+    total = this.calculateBonuses(total, dice, modifier);
     total = this.calculateStickers(total, dice);
     return total;
   }
 
-  calculateDiceBonuses(total: number, dice: Dice): number {
-    total += this.calculateMaximumBonuses(dice);
-    total += this.calculateMinimumPenalties(dice);
+  calculateDiceBonuses(total: number, dice: Dice, modifier: Modifier | null = null): number {
+    total += this.calculateMaximumBonuses(dice) * (modifier?.maxBonusScale ?? 1);
+    total += this.calculateMinimumPenalties(dice) * (modifier?.penaltyScale ?? 1);
     return total;
   }
 
@@ -65,18 +69,25 @@ class Game {
     return this.numericRolls(dice).reduce((sum, val) => sum + val, 0);
   }
 
-  bonusesApplied(dice: Dice): string[] {
-    const bonuses: string[] = [...this.comboBonuses(dice).lines];
+  bonusesApplied(dice: Dice, modifier: Modifier | null = null): string[] {
+    const bonuses: string[] = [...this.comboBonuses(dice, modifier?.combo).lines];
 
+    if (modifier?.perDieValueBonus) {
+      const gain = modifier.perDieValueBonus * this.numericRolls(dice).length;
+      if (gain > 0) bonuses.push(`Big Numbers (+${gain})`);
+    }
+
+    const maxScale = modifier?.maxBonusScale ?? 1;
+    const penaltyScale = modifier?.penaltyScale ?? 1;
     const maximumDice = dice.filter((die) => die.rolledMax());
     const minimumDice = dice.filter((die) => die.rolledMin());
 
     if (maximumDice.length > 0) {
-      bonuses.push(`Max Roll Bonus (+${this.calculateMaximumBonuses(maximumDice)})`);
+      bonuses.push(`Max Roll Bonus (+${this.calculateMaximumBonuses(maximumDice) * maxScale})`);
     }
 
     if (minimumDice.length > 0) {
-      bonuses.push(`Min Roll Penalty (${this.calculateMinimumPenalties(minimumDice)})`);
+      bonuses.push(`Min Roll Penalty (${this.calculateMinimumPenalties(minimumDice) * penaltyScale})`);
     }
 
     if (bonuses.length === 0) {
@@ -101,8 +112,8 @@ class Game {
     return stickers;
   }
 
-  calculateBonuses(currentTotal: number, dice: Dice): number {
-    return currentTotal + this.comboBonuses(dice).total;
+  calculateBonuses(currentTotal: number, dice: Dice, modifier: Modifier | null = null): number {
+    return currentTotal + this.comboBonuses(dice, modifier?.combo).total;
   }
 
   calculateStickers(currentTotal: number, dice: Dice): number {
@@ -141,15 +152,21 @@ class Game {
   }
 
   // All combo bonuses for this roll, scaled by the matched face value, plus a
-  // human-readable line per combo for the scorecard.
-  comboBonuses(dice: Dice): { total: number; lines: string[] } {
+  // human-readable line per combo for the scorecard. A round modifier's combo
+  // rules can disable combos, scale pairs/straights, or shorten the straight.
+  comboBonuses(dice: Dice, combo: ComboMods | null = null): { total: number; lines: string[] } {
     let total = 0;
     const lines: string[] = [];
 
+    if (combo?.disabled) {
+      return { total, lines };
+    }
+
+    const pairScale = combo?.pairScale ?? 1;
     for (const [value, count] of this.valueCounts(dice)) {
       let bonus = 0;
       let name = '';
-      if (count === 2) { bonus = value * Game.PAIR_FACTOR; name = 'Pair'; }
+      if (count === 2) { bonus = value * Game.PAIR_FACTOR * pairScale; name = 'Pair'; }
       else if (count === 3) { bonus = value * Game.TRIPLE_FACTOR; name = 'Triple'; }
       else if (count === 4) { bonus = value * Game.QUAD_FACTOR; name = 'Quad'; }
       else if (count === 5) { bonus = value * Game.FIVE_FACTOR; name = 'Five'; }
@@ -160,10 +177,10 @@ class Game {
       }
     }
 
-    const run = this.straightRun(dice);
+    const run = this.straightRun(dice, combo?.straightNeeds ?? 5);
     if (run) {
       const high = run[run.length - 1];
-      const bonus = high * Game.STRAIGHT_FACTOR;
+      const bonus = high * Game.STRAIGHT_FACTOR * (combo?.straightScale ?? 1);
       total += bonus;
       lines.push(`Straight to ${high} (+${bonus})`);
     }
@@ -171,13 +188,13 @@ class Game {
     return { total, lines };
   }
 
-  // Highest-value run of five consecutive face values, or null if none.
-  straightRun(dice: Dice): number[] | null {
+  // Highest-value run of `length` consecutive face values, or null if none.
+  straightRun(dice: Dice, length: number = 5): number[] | null {
     const sorted = Array.from(new Set(this.numericRolls(dice))).sort((a, b) => a - b);
 
     let best: number[] | null = null;
-    for (let i = 0; i <= sorted.length - 5; i++) {
-      const sequence = sorted.slice(i, i + 5);
+    for (let i = 0; i <= sorted.length - length; i++) {
+      const sequence = sorted.slice(i, i + length);
       const isStraightSequence = sequence.every((val, idx) => {
         if (idx === 0) return true;
         return val === sequence[idx - 1] + 1;

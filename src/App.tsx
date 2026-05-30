@@ -7,6 +7,11 @@ import { type Die, getRandomDie } from "./die";
 import { Game } from "./game";
 import { BASE_SCORE, targetForRound } from "./progression";
 import { type Reward, generateRewards, applyReward } from "./reward";
+import { type Modifier, modifierForRound } from "./modifier";
+
+// Target for a round, after the round modifier's optional target multiplier.
+const targetFor = (round: number, modifier: Modifier | null) =>
+  Math.ceil(targetForRound(round) * (modifier?.targetMultiplier ?? 1));
 
 function DiceVisualizer({ die }: { die: Die }) {
   return (
@@ -131,17 +136,22 @@ function App() {
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [score, setScore] = useState(0);
   const [targetScore, setTargetScore] = useState(BASE_SCORE);
+  const [modifier, setModifier] = useState<Modifier | null>(null);
   const [lost, setLost] = useState(false);
 
   const [showBonuses, setShowBonuses] = useState(false);
   const [showFinalTotal, setShowFinalTotal] = useState(false);
 
+  const maxRolls = modifier?.rolls ?? maxRollsPerRound;
+
   const startNewRound = () => {
     const nextRound = round + 1;
+    const nextModifier = modifierForRound(nextRound);
     setUpgrading(false);
     setRewards([]);
     setScore(0);
-    setTargetScore(targetForRound(nextRound));
+    setModifier(nextModifier);
+    setTargetScore(targetFor(nextRound, nextModifier));
     setRound(nextRound);
     setRoll(1);
     setShowBonuses(false);
@@ -161,6 +171,7 @@ function App() {
     setUpgrading(false);
     setRewards([]);
     setScore(0);
+    setModifier(null);
     setTargetScore(BASE_SCORE);
     setLost(false);
     setShowBonuses(false);
@@ -195,7 +206,7 @@ function App() {
         }, rollCount * intervalMs + 1000);
 
         setTimeout(() => {
-          const newScore = score + game.calculate(newDice);
+          const newScore = score + game.calculate(newDice, modifier);
           setScore(newScore);
           setRolling(false);
           if (newScore >= targetScore) {
@@ -203,7 +214,7 @@ function App() {
             setUpgrading(true);
             return;
           }
-          if (roll >= maxRollsPerRound) {
+          if (roll >= maxRolls) {
             setLost(true);
           } else {
             setRoll(roll + 1);
@@ -227,8 +238,8 @@ function App() {
   });
 
   const total = game.calculateSubTotal(dice);
-  const bonuses = game.bonusesApplied(dice);
-  const finalTotal = game.calculate(dice);
+  const bonuses = game.bonusesApplied(dice, modifier);
+  const finalTotal = game.calculate(dice, modifier);
 
   return (
     <>
@@ -238,12 +249,19 @@ function App() {
           <div className="mb-4">
             <div>Round: {round}</div>
             <div>
-              Roll: {roll} / {maxRollsPerRound}
+              Roll: {roll} / {maxRolls}
             </div>
             <div>
               Score: {score} / {targetScore}
             </div>
           </div>
+
+          {modifier && (
+            <div className="modifier-notice mb-4 p-3 bg-purple-100 border border-purple-300 rounded inline-block">
+              <span className="font-bold">{modifier.name}</span>
+              <span className="text-sm text-gray-600"> — {modifier.description}</span>
+            </div>
+          )}
 
           {lost ? (
             <div className="lost-notice mt-4 p-4 bg-red-100 border border-red-300 rounded">

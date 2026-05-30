@@ -69,3 +69,19 @@ of each kind:
 
 Generation is random, but the **choice is yours** — pick the one option that best
 fits your pool. Reward logic lives in `src/reward.ts`.
+
+## Round modifiers
+
+From **round 4 onward**, each round rolls a random modifier — a one-round rule
+that changes how you play. They're a mix of boons, banes, and twists, e.g.:
+
+- **Pairs Pay Double** — pair bonuses doubled.
+- **Straight Fever** — straights need only 4 in a row.
+- **Big Numbers** — every scoring die is worth +1.
+- **Bonus Roll** / **Drought** — 6 / 4 rolls this round.
+- **Combo Lockout** — no combo bonuses; subtotal and stickers only.
+- **Tax Season** / **Clearance** — target ±20%.
+
+A modifier is plain data (`src/modifier.ts`); `Game.calculate(dice, modifier?)`
+and the App read the fields they need, so scoring stays decoupled. Rounds 1-3
+have no modifier (onboarding).
