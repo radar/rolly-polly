@@ -48,28 +48,42 @@ function Scorecard({
   const stickers = game.stickersApplied(dice);
   return (
     <div>
-      <div className="total">Sum: {total}</div>
+      <div className="total mt-2">Sum: {total}</div>
       {showBonuses && (
         <div>
-          <div className="bonuses mt-4">
-            <p>Bonuses Applied:</p>
-            {bonuses.map((bonus, index) => (
-              <div key={index}>{bonus}</div>
-            ))}
+          <div className="bonuses mt-2 sm:mt-4">
+            <p className="text-sm text-gray-500">Bonuses</p>
+            <div className="flex flex-wrap justify-center gap-1 mt-1">
+              {bonuses.map((bonus, index) => (
+                <span
+                  key={index}
+                  className="text-sm bg-gray-100 text-gray-700 rounded-full px-2 py-0.5"
+                >
+                  {bonus}
+                </span>
+              ))}
+            </div>
           </div>
 
           {stickers.length > 0 && (
-            <div className="stickers mt-4">
-              <p>Stickers Applied:</p>
-              {stickers.map((sticker, index) => (
-                <div key={index}>{sticker}</div>
-              ))}
+            <div className="stickers mt-2 sm:mt-4">
+              <p className="text-sm text-gray-500">Stickers</p>
+              <div className="flex flex-wrap justify-center gap-1 mt-1">
+                {stickers.map((sticker, index) => (
+                  <span
+                    key={index}
+                    className="text-sm bg-green-100 text-green-700 rounded-full px-2 py-0.5"
+                  >
+                    {sticker}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
         </div>
       )}
       {showFinalTotal && (
-        <div className="final-total mt-4 text-2xl font-bold">
+        <div className="final-total mt-2 sm:mt-4 text-2xl font-bold">
           Final Total: {finalTotal}
         </div>
       )}
@@ -101,7 +115,7 @@ function Roller({
       <button
         onClick={onRoll}
         disabled={rolling}
-        className="bg-blue-500 text-white py-3 px-4 rounded mb-4 w-full sm:w-auto hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="bg-blue-500 text-white py-3 px-4 rounded mb-3 sm:mb-4 w-full sm:w-auto hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Roll Die
       </button>
@@ -243,23 +257,21 @@ function App() {
 
   return (
     <>
-      <div className="py-6 sm:py-8 px-4 overflow-x-hidden">
+      <div className="py-4 sm:py-8 px-4 overflow-x-hidden">
         <div className="text-center">
-          <h1 className="text-3xl sm:text-4xl font-bold mb-4">Rolly Polly!</h1>
-          <div className="mb-4">
-            <div>Round: {round}</div>
-            <div>
-              Roll: {roll} / {maxRolls}
-            </div>
-            <div>
-              Score: {score} / {targetScore}
-            </div>
+          <h1 className="text-2xl sm:text-4xl font-bold mb-2 sm:mb-4">Rolly Polly!</h1>
+          <div className="mb-3 sm:mb-4 flex flex-wrap justify-center gap-x-3 gap-y-1">
+            <span>Round {round}</span>
+            <span className="text-gray-400">·</span>
+            <span>Roll {roll}/{maxRolls}</span>
+            <span className="text-gray-400">·</span>
+            <span>Score {score} / {targetScore}</span>
           </div>
 
           {modifier && (
-            <div className="modifier-notice mb-4 p-3 bg-purple-100 border border-purple-300 rounded">
+            <div className="modifier-notice mb-3 sm:mb-4 p-2 bg-purple-100 border border-purple-300 rounded">
               <span className="font-bold">{modifier.name}</span>
-              <span className="block sm:inline text-sm text-gray-600 sm:before:content-['_—_']">
+              <span className="block sm:inline text-xs sm:text-sm text-gray-600 sm:before:content-['_—_']">
                 {modifier.description}
               </span>
             </div>
