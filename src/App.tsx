@@ -54,14 +54,20 @@ function Scorecard({
           <div className="bonuses mt-2 sm:mt-4">
             <p className="text-sm text-gray-500">Bonuses</p>
             <div className="flex flex-wrap justify-center gap-1 mt-1">
-              {bonuses.map((bonus, index) => (
-                <span
-                  key={index}
-                  className="text-sm bg-gray-100 text-gray-700 rounded-full px-2 py-0.5"
-                >
-                  {bonus}
-                </span>
-              ))}
+              {bonuses.map((bonus, index) => {
+                const penalty = bonus.includes("(-");
+                const neutral = bonus === "None!";
+                const color = neutral
+                  ? "bg-gray-100 text-gray-600"
+                  : penalty
+                    ? "bg-red-100 text-red-700"
+                    : "bg-green-100 text-green-700";
+                return (
+                  <span key={index} className={`text-sm rounded-full px-2 py-0.5 ${color}`}>
+                    {bonus}
+                  </span>
+                );
+              })}
             </div>
           </div>
 
