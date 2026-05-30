@@ -105,7 +105,7 @@ function Roller({
       >
         Roll Die
       </button>
-      <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-3 sm:gap-4 w-full md:w-2/3 lg:w-1/2 mx-auto">
+      <div className="flex flex-wrap justify-center gap-3 sm:gap-4 w-full">
         {dice.map((die, index) => (
           <DiceVisualizer key={index} die={die} />
         ))}
@@ -243,8 +243,8 @@ function App() {
 
   return (
     <>
-      <div className="py-6 sm:py-8 px-4">
-        <div className="text-center max-w-2xl mx-auto">
+      <div className="py-6 sm:py-8 px-4 overflow-x-hidden">
+        <div className="text-center">
           <h1 className="text-3xl sm:text-4xl font-bold mb-4">Rolly Polly!</h1>
           <div className="mb-4">
             <div>Round: {round}</div>
