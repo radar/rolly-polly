@@ -255,6 +255,26 @@ it('calculates a total score with a pair', () => {
     expect(game.calculate(dice)).toBe(326);
   });
 
+  it('detects a straight when a duplicate value is present', () => {
+    const game = new Game();
+    const dice = [
+      new DieD6(1),
+      new DieD6(2),
+      new DieD6(2),
+      new DieD6(3),
+      new DieD6(4),
+      new DieD6(5),
+    ];
+
+    // Subtotal = 1 + 2 + 2 + 3 + 4 + 5 = 17
+    // Straight bonus (1-2-3-4-5) = 30
+    // Pair bonus (two 2s) = 10
+    // Min roll penalty = -3
+    // Total = 54
+    expect(game.isStraight(dice)).toBe(true);
+    expect(game.calculate(dice)).toBe(54);
+  });
+
   it('calculates a 3, 4, 6, 7, 8, 9 as NOT a straight', () => {
     const game = new Game();
     const dice = [

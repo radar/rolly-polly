@@ -203,7 +203,7 @@ class Game {
   }
 
   isStraight(dice: Dice): boolean {
-    const sorted = this.numericRolls(dice).sort((a, b) => a - b);
+    const sorted = Array.from(new Set(this.numericRolls(dice))).sort((a, b) => a - b);
 
     // Check all possible 5-consecutive sequences
     for (let i = 0; i <= sorted.length - 5; i++) {
