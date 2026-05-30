@@ -77,7 +77,7 @@ that changes how you play. They're a mix of boons, banes, and twists, e.g.:
 
 - **Pairs Pay Double** — pair bonuses doubled.
 - **Straight Fever** — straights need only 4 in a row.
-- **Big Numbers** — every scoring die is worth +1.
+- **Big Numbers** — dice that roll in their top half score double.
 - **Bonus Roll** / **Drought** — 6 / 4 rolls this round.
 - **Combo Lockout** — no combo bonuses, but the target is 40% lower (a raw-value
   round, not a wall).

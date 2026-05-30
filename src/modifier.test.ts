@@ -40,9 +40,11 @@ describe('modifier effects on scoring', () => {
     expect(lockout.targetMultiplier).toBeLessThan(1);
   });
 
-  it('Big Numbers adds the per-die bonus to the subtotal', () => {
-    // 36 + (1 * 5 dice) = 41
-    expect(game.calculate(pairDice(), { name: '', description: '', perDieValueBonus: 1 })).toBe(41);
+  it('Big Numbers doubles dice that roll in their top half', () => {
+    // 2, 4, 4, 5, 6 on d6 (max 6, half 3): 4, 4, 5, 6 are > 3
+    // base 36 + (4 + 4 + 5 + 6) = 55
+    expect(game.calculate(pairDice())).toBe(36);
+    expect(game.calculate(pairDice(), { name: '', description: '', highRollScale: 1 })).toBe(55);
   });
 
   it('High Roller doubles max-roll bonuses', () => {

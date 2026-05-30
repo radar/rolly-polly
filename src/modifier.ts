@@ -14,7 +14,7 @@ export interface Modifier {
   description: string;
   rolls?: number; // override the per-round roll budget
   targetMultiplier?: number; // scale this round's target score
-  perDieValueBonus?: number; // flat +N to the subtotal per scoring die
+  highRollScale?: number; // dice rolling above half their max score (value * this) extra
   penaltyScale?: number; // scale min-roll penalties
   maxBonusScale?: number; // scale max-roll bonuses
   critMultiplier?: number; // each natural 20 multiplies the whole roll by this
@@ -25,7 +25,7 @@ export const MODIFIERS: Modifier[] = [
   { name: "Pairs Pay Double", description: "Pair bonuses are doubled.", combo: { pairScale: 2 } },
   { name: "Straight Fever", description: "Straights need only 4 in a row.", combo: { straightNeeds: 4 } },
   { name: "High Roller", description: "Max-roll bonuses are doubled.", maxBonusScale: 2 },
-  { name: "Big Numbers", description: "Every scoring die is worth +1.", perDieValueBonus: 1 },
+  { name: "Big Numbers", description: "Dice that roll in their top half score double.", highRollScale: 1 },
   { name: "Bonus Roll", description: "You get 6 rolls this round.", rolls: 6 },
   { name: "Drought", description: "Only 4 rolls this round.", rolls: 4 },
   { name: "Slippery", description: "Min-roll penalties are doubled.", penaltyScale: 2 },

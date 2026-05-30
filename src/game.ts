@@ -24,14 +24,28 @@ class Game {
 
   calculate(dice: Dice, modifier: Modifier | null = null): number {
     let total = this.calculateSubTotal(dice);
-    if (modifier?.perDieValueBonus) {
-      total += modifier.perDieValueBonus * this.numericRolls(dice).length;
-    }
     total = this.calculateDiceBonuses(total, dice, modifier);
     total = this.calculateBonuses(total, dice, modifier);
+    total += this.highRollBonus(dice, modifier);
     total = this.calculateStickers(total, dice);
     total = this.applyCrit(total, dice, modifier);
     return total;
+  }
+
+  // "Big Numbers": each die rolling above half its max face scores extra,
+  // value * highRollScale. Rewards big rolls (and big dice) rather than a flat
+  // per-die bump, so the payoff swings with what you actually roll.
+  highRollBonus(dice: Dice, modifier: Modifier | null = null): number {
+    const scale = modifier?.highRollScale;
+    if (!scale) return 0;
+    let bonus = 0;
+    dice.forEach((die) => {
+      const value = die.rolledValue;
+      if (typeof value === "number" && value > die.highestNumber() / 2) {
+        bonus += value * scale;
+      }
+    });
+    return bonus;
   }
 
   // Number of natural 20s rolled (only a d20 has a 20 face).
@@ -86,9 +100,9 @@ class Game {
   bonusesApplied(dice: Dice, modifier: Modifier | null = null): string[] {
     const bonuses: string[] = [...this.comboBonuses(dice, modifier?.combo).lines];
 
-    if (modifier?.perDieValueBonus) {
-      const gain = modifier.perDieValueBonus * this.numericRolls(dice).length;
-      if (gain > 0) bonuses.push(`Big Numbers (+${gain})`);
+    const highRoll = this.highRollBonus(dice, modifier);
+    if (highRoll > 0) {
+      bonuses.push(`Big Rolls (+${highRoll})`);
     }
 
     const maxScale = modifier?.maxBonusScale ?? 1;
