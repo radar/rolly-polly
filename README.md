@@ -30,9 +30,11 @@ Each roll is scored as:
 2. **Die bonuses / penalties** — rolling a die's highest face adds a bonus;
    rolling its lowest face applies a penalty (see `maxBonus` / `minPenalty` in
    `src/die.ts`).
-3. **Combo bonuses** — matching faces and runs:
-   - Pair `+10`, Triple `+20`, Quad `+40`, Five-of-a-kind `+50`, Six-of-a-kind `+100`
-   - **Straight** (five consecutive values) `+30`
+3. **Combo bonuses** — matching faces and runs, scaled by the matched value
+   (so a pair of 8s beats a pair of 2s, and upgrading dice grows your combos):
+   - Pair `value×3`, Triple `value×6`, Quad `value×8`, Five-of-a-kind `value×10`,
+     Six-of-a-kind `value×16`
+   - **Straight** (five consecutive values) — highest value in the run `×6`
 4. **Stickers** — additions are applied first, then multipliers (multipliers are
    applied last, so they scale everything).
 
@@ -57,7 +59,9 @@ target: 100  138  181  229  282  339  401
 Clear a round and three concrete rewards are **rolled at random** — typically one
 of each kind:
 
-- **New die** — adds a randomly-rolled die to your pool (more dice, more combos).
+- **New die** — adds a randomly-rolled die to your pool (more dice, more combos),
+  up to a cap of 12 dice. Past the cap this reward is replaced by an upgrade or
+  sticker, so adding dice can't be the only strategy.
 - **Upgrade** — bumps **every** upgradable die up one tier (e.g. d6 → d8). Scales
   with your pool, so it grows in value as the game goes on.
 - **Sticker** — attaches a multiplier (`x3`…`x10`) or addition (`+50`/`+100`)

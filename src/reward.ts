@@ -34,6 +34,10 @@ const STICKER_POOL: string[] = [
   ...Array(10).fill("+100"),
 ];
 
+// Cap the pool so adding dice can't be the one true strategy. Past the cap the
+// add-die reward is replaced, pushing players toward upgrades and stickers.
+export const MAX_DICE = 12;
+
 function pick<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
@@ -72,10 +76,16 @@ function makeStickerReward(dice: Die[]): Reward {
 // extra die when nothing is upgradable.
 export function generateRewards(dice: Die[]): Reward[] {
   const upgradableCount = dice.filter((die) => die.canUpgrade).length;
+  const atCap = dice.length >= MAX_DICE;
+
+  // Below the cap: add-die / upgrade / sticker. At the cap: add-die slots are
+  // replaced (upgrade if anything can upgrade, otherwise another sticker).
+  const nonDieFallback = () =>
+    upgradableCount > 0 ? makeUpgradeReward(upgradableCount) : makeStickerReward(dice);
 
   return [
-    makeAddDieReward(),
-    upgradableCount > 0 ? makeUpgradeReward(upgradableCount) : makeAddDieReward(),
+    atCap ? nonDieFallback() : makeAddDieReward(),
+    upgradableCount > 0 ? makeUpgradeReward(upgradableCount) : (atCap ? makeStickerReward(dice) : makeAddDieReward()),
     makeStickerReward(dice),
   ];
 }

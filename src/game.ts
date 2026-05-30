@@ -6,12 +6,15 @@ type Roll = number | Sticker | null;
 type Dice = Die[];
 
 class Game {
-  static PAIR_BONUS = 10;
-  static TRIPLE_BONUS = 20;
-  static STRAIGHT_BONUS = 30;
-  static QUAD_BONUS = 40;
-  static FIVE_BONUS = 50;
-  static SIX_BONUS = 100;
+  // Combo bonuses scale with the matched face value, so upgrading dice (bigger
+  // faces) grows your combo output — not just adding more dice. A combo of
+  // value V is worth V * factor; a straight is worth its highest value * factor.
+  static PAIR_FACTOR = 3;
+  static TRIPLE_FACTOR = 6;
+  static QUAD_FACTOR = 8;
+  static FIVE_FACTOR = 10;
+  static SIX_FACTOR = 16;
+  static STRAIGHT_FACTOR = 6;
 
   // Constructor
   constructor() {
@@ -63,19 +66,7 @@ class Game {
   }
 
   bonusesApplied(dice: Dice): string[] {
-    const bonuses: string[] = [];
-    const sixes = this.sixes(dice);
-    const fives = this.fives(dice);
-    const quads = this.quads(dice);
-    const triples = this.triples(dice);
-    const pairs = this.pairs(dice);
-
-    if (quads > 0) bonuses.push(`Quads x${quads} (+${Game.QUAD_BONUS * quads})`);
-    if (triples > 0) bonuses.push(`Triples x${triples} (+${Game.TRIPLE_BONUS * triples})`);
-    if (pairs > 0) bonuses.push(`Pairs x${pairs} (+${Game.PAIR_BONUS * pairs})`);
-    if (this.isStraight(dice)) bonuses.push(`Straight (+${Game.STRAIGHT_BONUS})`);
-    if (fives > 0) bonuses.push(`Fives x${fives} (+${Game.FIVE_BONUS * fives})`);
-    if (sixes > 0) bonuses.push(`Sixes x${sixes} (+${Game.SIX_BONUS * sixes})`);
+    const bonuses: string[] = [...this.comboBonuses(dice).lines];
 
     const maximumDice = dice.filter((die) => die.rolledMax());
     const minimumDice = dice.filter((die) => die.rolledMin());
@@ -111,20 +102,7 @@ class Game {
   }
 
   calculateBonuses(currentTotal: number, dice: Dice): number {
-    const sixes = this.sixes(dice);
-    const fives = this.fives(dice);
-    const quads = this.quads(dice);
-    const triples = this.triples(dice);
-    const pairs = this.pairs(dice);
-
-    currentTotal += Game.QUAD_BONUS * quads;
-    currentTotal += Game.TRIPLE_BONUS * triples;
-    currentTotal += Game.PAIR_BONUS * pairs;
-    if (this.isStraight(dice)) currentTotal += Game.STRAIGHT_BONUS;
-    currentTotal += Game.FIVE_BONUS * fives;
-    currentTotal += Game.SIX_BONUS * sixes;
-
-    return currentTotal;
+    return currentTotal + this.comboBonuses(dice).total;
   }
 
   calculateStickers(currentTotal: number, dice: Dice): number {
@@ -151,72 +129,68 @@ class Game {
     return dice.map((die) => die.roll());
   }
 
-  pairs(dice: Dice): number {
+  // Map of rolled face value -> how many dice show it.
+  valueCounts(dice: Dice): Map<number, number> {
     const counts = new Map<number, number>();
     dice.forEach((die) => {
       if (typeof die.rolledValue === 'number') {
         counts.set(die.rolledValue, (counts.get(die.rolledValue) || 0) + 1);
       }
     });
-    return Array.from(counts.values()).filter((count) => count === 2).length;
+    return counts;
   }
 
-  triples(dice: Dice): number {
-    const counts = new Map<number, number>();
-    dice.forEach((die) => {
-      if (typeof die.rolledValue === 'number') {
-        counts.set(die.rolledValue, (counts.get(die.rolledValue) || 0) + 1);
+  // All combo bonuses for this roll, scaled by the matched face value, plus a
+  // human-readable line per combo for the scorecard.
+  comboBonuses(dice: Dice): { total: number; lines: string[] } {
+    let total = 0;
+    const lines: string[] = [];
+
+    for (const [value, count] of this.valueCounts(dice)) {
+      let bonus = 0;
+      let name = '';
+      if (count === 2) { bonus = value * Game.PAIR_FACTOR; name = 'Pair'; }
+      else if (count === 3) { bonus = value * Game.TRIPLE_FACTOR; name = 'Triple'; }
+      else if (count === 4) { bonus = value * Game.QUAD_FACTOR; name = 'Quad'; }
+      else if (count === 5) { bonus = value * Game.FIVE_FACTOR; name = 'Five'; }
+      else if (count >= 6) { bonus = value * Game.SIX_FACTOR; name = 'Six'; }
+      if (bonus > 0) {
+        total += bonus;
+        lines.push(`${name} of ${value} (+${bonus})`);
       }
-    });
-    return Array.from(counts.values()).filter((count) => count === 3).length;
+    }
+
+    const run = this.straightRun(dice);
+    if (run) {
+      const high = run[run.length - 1];
+      const bonus = high * Game.STRAIGHT_FACTOR;
+      total += bonus;
+      lines.push(`Straight to ${high} (+${bonus})`);
+    }
+
+    return { total, lines };
   }
 
-  quads(dice: Dice): number {
-    const counts = new Map<number, number>();
-    dice.forEach((die) => {
-      if (typeof die.rolledValue === 'number') {
-        counts.set(die.rolledValue, (counts.get(die.rolledValue) || 0) + 1);
-      }
-    });
-    return Array.from(counts.values()).filter((count) => count === 4).length;
-  }
-
-  fives(dice: Dice): number {
-    const counts = new Map<number, number>();
-    dice.forEach((die) => {
-      if (typeof die.rolledValue === 'number') {
-        counts.set(die.rolledValue, (counts.get(die.rolledValue) || 0) + 1);
-      }
-    });
-    return Array.from(counts.values()).filter((count) => count === 5).length;
-  }
-
-  sixes(dice: Dice): number {
-    const counts = new Map<number, number>();
-
-    dice.forEach((die) => {
-      if (typeof die.rolledValue === 'number') {
-        counts.set(die.rolledValue, (counts.get(die.rolledValue) || 0) + 1);
-      }
-    });
-    return Array.from(counts.values()).filter((count) => count >= 6).length;
-  }
-
-  isStraight(dice: Dice): boolean {
+  // Highest-value run of five consecutive face values, or null if none.
+  straightRun(dice: Dice): number[] | null {
     const sorted = Array.from(new Set(this.numericRolls(dice))).sort((a, b) => a - b);
 
-    // Check all possible 5-consecutive sequences
+    let best: number[] | null = null;
     for (let i = 0; i <= sorted.length - 5; i++) {
       const sequence = sorted.slice(i, i + 5);
       const isStraightSequence = sequence.every((val, idx) => {
         if (idx === 0) return true;
         return val === sequence[idx - 1] + 1;
       });
-
-      if (isStraightSequence) return true;
+      // windows ascend, so a later match has higher values than an earlier one
+      if (isStraightSequence) best = sequence;
     }
 
-    return false;
+    return best;
+  }
+
+  isStraight(dice: Dice): boolean {
+    return this.straightRun(dice) !== null;
   }
 
   numericRolls(dice: Dice): number[] {

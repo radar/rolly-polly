@@ -22,9 +22,11 @@ Game logic is plain TS classes, deliberately decoupled from React so it is unit
 testable without rendering.
 
 - `src/game.ts` — `Game` class: the scoring engine. `calculate()` runs the
-  pipeline subtotal → die bonuses/penalties → combo bonuses → stickers. Combo
-  detection (`pairs`/`triples`/`quads`/`fives`/`sixes`/`isStraight`) counts
-  rolled face values.
+  pipeline subtotal → die bonuses/penalties → combo bonuses → stickers.
+  `valueCounts` tallies rolled faces; `comboBonuses` turns matches into
+  value-scaled bonuses (a combo of value V is worth `V × factor`, a straight
+  worth its highest value `× STRAIGHT_FACTOR`); `straightRun` finds the
+  highest-value five-in-a-row.
 - `src/die.ts` — `BaseDie` and the die ladder (`DieD1`…`DieD20`, plus `DieOdd`,
   `DieEven`, `DieFib`, `DieMultiplier`). `upgrade()` returns the next die up;
   `canUpgrade` gates which dice can be upgraded. `getRandomDie(...pool)` picks a
@@ -35,7 +37,8 @@ testable without rendering.
   curve (decaying-ratio, see below).
 - `src/reward.ts` — `generateRewards(dice)` rolls three concrete reward options;
   `applyReward(dice, reward)` applies the player's pick. Reward is a discriminated
-  union (`add-die` | `upgrade` | `sticker`).
+  union (`add-die` | `upgrade` | `sticker`). `upgrade` lifts every upgradable die
+  one tier; `add-die` is gated by `MAX_DICE` (pool cap).
 - `src/App.tsx` — the only React component. Owns all game state (round, roll,
   score, target, dice, rewards) and the roll/score/reward loop.
 
