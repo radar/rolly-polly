@@ -5,7 +5,7 @@
 }
 
 .die {
-  @apply mx-auto w-16 h-16 flex items-center justify-center rounded-lg text-2xl font-bold bg-white text-gray-800;
+  @apply mx-auto w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center rounded-lg text-xl sm:text-2xl font-bold bg-white text-gray-800;
 }
 
 

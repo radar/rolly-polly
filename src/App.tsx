@@ -101,11 +101,11 @@ function Roller({
       <button
         onClick={onRoll}
         disabled={rolling}
-        className="bg-blue-500 text-white py-2 px-4 rounded mb-4 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="bg-blue-500 text-white py-3 px-4 rounded mb-4 w-full sm:w-auto hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Roll Die
       </button>
-      <div className="grid grid-cols-5 md:grid-cols-6 gap-4 w-full md:w-1/2 lg:w-1/3 mx-auto">
+      <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-3 sm:gap-4 w-full md:w-2/3 lg:w-1/2 mx-auto">
         {dice.map((die, index) => (
           <DiceVisualizer key={index} die={die} />
         ))}
@@ -243,9 +243,9 @@ function App() {
 
   return (
     <>
-      <div className="py-8">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold mb-4">Rolly Polly!</h1>
+      <div className="py-6 sm:py-8 px-4">
+        <div className="text-center max-w-2xl mx-auto">
+          <h1 className="text-3xl sm:text-4xl font-bold mb-4">Rolly Polly!</h1>
           <div className="mb-4">
             <div>Round: {round}</div>
             <div>
@@ -257,9 +257,11 @@ function App() {
           </div>
 
           {modifier && (
-            <div className="modifier-notice mb-4 p-3 bg-purple-100 border border-purple-300 rounded inline-block">
+            <div className="modifier-notice mb-4 p-3 bg-purple-100 border border-purple-300 rounded">
               <span className="font-bold">{modifier.name}</span>
-              <span className="text-sm text-gray-600"> — {modifier.description}</span>
+              <span className="block sm:inline text-sm text-gray-600 sm:before:content-['_—_']">
+                {modifier.description}
+              </span>
             </div>
           )}
 
@@ -279,12 +281,12 @@ function App() {
               <p className="font-bold">Choose Your Reward!</p>
               <p>Three rewards were rolled at random — pick one to keep.</p>
 
-              <div className="mt-4 flex flex-col md:flex-row justify-center gap-4">
+              <div className="mt-4 flex flex-col md:flex-row justify-center gap-3 sm:gap-4">
                 {rewards.map((reward, index) => (
                   <button
                     key={index}
                     onClick={() => chooseReward(reward)}
-                    className="bg-blue-500 text-white py-3 px-4 rounded hover:bg-blue-600"
+                    className="bg-blue-500 text-white py-3 px-4 rounded w-full md:w-auto md:flex-1 hover:bg-blue-600"
                   >
                     {reward.label}
                   </button>
