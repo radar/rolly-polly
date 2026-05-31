@@ -27,10 +27,10 @@ export const MODIFIERS: Modifier[] = [
   { name: "High Roller", description: "Max-roll bonuses are doubled.", maxBonusScale: 2 },
   { name: "Big Numbers", description: "Dice that roll in their top half score double.", highRollScale: 1 },
   { name: "Bonus Roll", description: "You get 6 rolls this round.", rolls: 6 },
-  { name: "Drought", description: "Only 4 rolls this round.", rolls: 4 },
+  { name: "Drought", description: "Only 4 rolls this round, but the target is 20% lower to match.", rolls: 4, targetMultiplier: 0.8 },
   { name: "Slippery", description: "Min-roll penalties are doubled.", penaltyScale: 2 },
   { name: "Combo Lockout", description: "No combo bonuses, but the target is 40% lower — a raw-value round.", targetMultiplier: 0.6, combo: { disabled: true } },
-  { name: "Tax Season", description: "The target is 20% higher this round.", targetMultiplier: 1.2 },
+  { name: "Tax Season", description: "The target is 10% higher this round.", targetMultiplier: 1.1 },
   { name: "Clearance", description: "The target is 20% lower this round.", targetMultiplier: 0.8 },
   { name: "Crit Day", description: "Each natural 20 on a d20 doubles your roll (stacks).", critMultiplier: 2 },
 ];
