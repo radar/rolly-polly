@@ -42,17 +42,22 @@ function stickerBadges(die: Die): string[] {
 
 function DieCard({ die, onClick, compact }: { die: Die; onClick: () => void; compact: boolean }) {
   const badges = stickerBadges(die);
+  const value = die.displayRolledValue() ?? "·";
+  // Long faces like "+100" / "+30%" would overflow the card, so shrink the
+  // value font as the text gets longer.
+  const size =
+    value.length >= 4
+      ? compact ? "text-sm sm:text-base" : "text-xl sm:text-2xl"
+      : value.length === 3
+        ? compact ? "text-base sm:text-lg" : "text-2xl sm:text-3xl"
+        : compact ? "text-xl sm:text-2xl" : "text-3xl sm:text-4xl";
   return (
     <button className={`${die.className} die-card ${compact ? "die-card-compact" : ""}`} onClick={onClick}>
       <span className="text-xs font-bold tracking-wide text-gray-500 dark:text-gray-400">
         {die.name}
       </span>
-      <span
-        className={`flex-1 grid place-items-center w-full font-extrabold leading-none py-2 ${
-          compact ? "text-xl sm:text-2xl" : "text-3xl sm:text-4xl"
-        }`}
-      >
-        {die.displayRolledValue() ?? "·"}
+      <span className={`flex-1 grid place-items-center w-full font-extrabold leading-none py-2 whitespace-nowrap ${size}`}>
+        {value}
       </span>
       {badges.length > 0 && (
         <span className="flex flex-wrap justify-center gap-1 w-full">
