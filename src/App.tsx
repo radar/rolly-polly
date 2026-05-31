@@ -40,14 +40,18 @@ function stickerBadges(die: Die): string[] {
   return Array.from(counts, ([label, n]) => (n > 1 ? `${label}×${n}` : label));
 }
 
-function DieCard({ die, onClick }: { die: Die; onClick: () => void }) {
+function DieCard({ die, onClick, compact }: { die: Die; onClick: () => void; compact: boolean }) {
   const badges = stickerBadges(die);
   return (
-    <button className={`${die.className} die-card`} onClick={onClick}>
+    <button className={`${die.className} die-card ${compact ? "die-card-compact" : ""}`} onClick={onClick}>
       <span className="text-xs font-bold tracking-wide text-gray-500 dark:text-gray-400">
         {die.name}
       </span>
-      <span className="flex-1 grid place-items-center w-full text-3xl sm:text-4xl font-extrabold leading-none py-2">
+      <span
+        className={`flex-1 grid place-items-center w-full font-extrabold leading-none py-2 ${
+          compact ? "text-xl sm:text-2xl" : "text-3xl sm:text-4xl"
+        }`}
+      >
         {die.displayRolledValue() ?? "·"}
       </span>
       {badges.length > 0 && (
@@ -158,6 +162,7 @@ function App() {
   });
   const [showRules, setShowRules] = useState(false);
   const [facesDie, setFacesDie] = useState<Die | null>(null);
+  const [rewardOutcome, setRewardOutcome] = useState<string | null>(null);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
@@ -180,7 +185,24 @@ function App() {
     setShowFinalTotal(false);
   };
 
+  const describeReward = (reward: Reward, before: Die[]): string => {
+    switch (reward.kind) {
+      case "add-die":
+        return `New die added: ${reward.die.name}.`;
+      case "sticker":
+        return `Stuck a ${faceLabel(reward.sticker)} sticker on ${before[reward.dieIndex].name}.`;
+      case "randomise":
+        return `${before[reward.dieIndex].name} randomised into ${reward.die.name}.`;
+      case "upgrade": {
+        const upgraded = before.filter((die) => die.canUpgrade).length;
+        const bonus = reward.bonusDie ? ` and added a ${reward.bonusDie.name}` : "";
+        return `Upgraded ${upgraded} ${upgraded === 1 ? "die" : "dice"} a tier${bonus}.`;
+      }
+    }
+  };
+
   const chooseReward = (reward: Reward) => {
+    setRewardOutcome(describeReward(reward, dice));
     setDice(applyReward(dice, reward));
     startNewRound();
   };
@@ -198,9 +220,11 @@ function App() {
     setLost(false);
     setShowBonuses(false);
     setShowFinalTotal(false);
+    setRewardOutcome(null);
   };
 
   const rollDie = () => {
+    setRewardOutcome(null);
     setShowBonuses(false);
     setShowFinalTotal(false);
     setRolling(true);
@@ -332,9 +356,14 @@ function App() {
         ) : (
           <main className="flex-1 flex flex-col">
             {/* Dice */}
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <div className="mt-6 flex flex-wrap justify-center gap-2 sm:gap-3">
               {dice.map((die, index) => (
-                <DieCard key={index} die={die} onClick={() => setFacesDie(die)} />
+                <DieCard
+                  key={index}
+                  die={die}
+                  onClick={() => setFacesDie(die)}
+                  compact={dice.length >= 9}
+                />
               ))}
             </div>
 
@@ -384,8 +413,13 @@ function App() {
               </div>
             )}
 
-            {/* Roll button pinned to the foot of the column */}
+            {/* Reward outcome + roll button pinned to the foot of the column */}
             <div className="mt-auto pt-8">
+              {rewardOutcome && (
+                <p className="mb-3 text-center text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                  {rewardOutcome}
+                </p>
+              )}
               <button
                 onClick={rollDie}
                 disabled={rolling}

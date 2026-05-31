@@ -11,6 +11,11 @@
          hover:brightness-105 active:scale-[0.98];
 }
 
+/* Shrink cards when the pool gets large (9+ dice) so they still fit a phone. */
+.die-card-compact {
+  @apply w-[4.25rem] sm:w-20 min-h-20 rounded-xl p-1.5;
+}
+
 .die-d6 { @apply border-gray-200 dark:border-slate-600; }
 .die-d8 { @apply border-emerald-500/70 dark:border-emerald-500/60; }
 .die-d10 { @apply border-blue-500/70 dark:border-blue-500/60; }
