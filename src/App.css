@@ -1,58 +1,30 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
-.dice {
-  @apply flex space-x-6;
+/* A die rendered as a card: name on top, big value centred, sticker badge at
+   the foot. The per-die colour classes below only override the border, so each
+   die keeps its signature colour while sharing the card chrome. */
+.die-card {
+  @apply relative flex flex-col items-center rounded-2xl border-2 p-2 w-20 sm:w-24 min-h-28 cursor-pointer transition select-none
+         bg-white border-gray-200 text-gray-900
+         dark:bg-slate-800/60 dark:border-slate-700 dark:text-white
+         hover:brightness-105 active:scale-[0.98];
 }
 
-.die-container {
-  @apply w-16 sm:w-20;
-}
-
-.die {
-  @apply mx-auto w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center rounded-lg text-xl sm:text-2xl font-bold bg-white text-gray-800;
-}
-
-
-.die-dmulti {
-  @apply border-2 border-orange-500 bg-orange-400 text-white;
-}
-
-.die-dodd {
-  @apply border-2 border-pink-500 bg-green-400 text-pink-800;
-}
-
-.die-deven {
-  @apply border-2 border-rose-500 bg-yellow-400 text-rose-800;
-}
-
-.die-d1 {
-  @apply border-2 border-black bg-black text-white;
-}
-
-.die-d2 {
-  @apply border-2 border-amber-500;
-}
-
-.die-d4 {
-  @apply border-2 border-red-500;
-}
-
-.die-d6 {
-  @apply border border-gray-400;
-}
-
-.die-d8 {
-  @apply ring-2 ring-green-600 shadow-sm shadow-green-400/50;
-}
-
-.die-d10 {
-  @apply ring-3 ring-blue-600 shadow-md shadow-blue-400/50;
-}
-
-.die-d12 {
-  @apply ring-4 ring-purple-500/50 shadow-lg shadow-purple-400/50;
-}
-
-.die-d20 {
-  @apply ring-5 ring-orange-500/50 shadow-xl shadow-orange-300/50;
-}
+.die-d6 { @apply border-gray-200 dark:border-slate-600; }
+.die-d8 { @apply border-emerald-500/70 dark:border-emerald-500/60; }
+.die-d10 { @apply border-blue-500/70 dark:border-blue-500/60; }
+.die-d12 { @apply border-purple-500/70 dark:border-purple-500/60; }
+.die-d20 { @apply border-orange-500/80 dark:border-orange-500/70; }
+.die-d4 { @apply border-red-500/70; }
+.die-d2 { @apply border-amber-500/70; }
+.die-d1 { @apply border-gray-900 dark:border-white; }
+.die-dodd { @apply border-pink-500/70; }
+.die-deven { @apply border-rose-500/70; }
+.die-dfib { @apply border-teal-500/70; }
+.die-dmulti { @apply border-orange-500/80; }
+.die-dpercent { @apply border-cyan-500/80; }
+.die-dprime { @apply border-indigo-500/80; }
+.die-dpower { @apply border-fuchsia-500/80; }
+.die-dglass { @apply border-sky-400/80; }
+.die-dwild { @apply border-yellow-400 dark:border-yellow-300; }

@@ -28,7 +28,13 @@ testable without rendering.
   worth its highest value `× STRAIGHT_FACTOR`); `straightRun` finds the
   highest-value five-in-a-row.
 - `src/die.ts` — `BaseDie` and the die ladder (`DieD1`…`DieD20`, plus `DieOdd`,
-  `DieEven`, `DieFib`, `DieMultiplier`). `upgrade()` returns the next die up;
+  `DieEven`, `DieFib`, `DieMultiplier`, `DiePercent`, `DiePrime`, `DiePower`,
+  `DieGlass`, `DieWild`). `DiePercent`'s faces are `Percentage` stickers that
+  boost the whole score by their rolled percent, folded into the same additive
+  multiplier step as `DieMultiplier`. `DieWild`'s faces are `Wild` markers —
+  non-numeric jokers that `Game.comboBonuses` piles onto the single matched set
+  they most improve (no subtotal/straight/max-min effect). `upgrade()` returns
+  the next die up;
   `canUpgrade` gates which dice can be upgraded. `getRandomDie(...pool)` picks a
   die from a weighted argument list. `addSticker` mutates a die's faces in place.
 - `src/sticker.ts` — `Multiplier` / `Addition` value objects and
@@ -42,9 +48,11 @@ testable without rendering.
   are just data the engine consults.
 - `src/reward.ts` — `generateRewards(dice)` rolls three concrete reward options;
   `applyReward(dice, reward)` applies the player's pick. Reward is a discriminated
-  union (`add-die` | `upgrade` | `sticker`). `upgrade` lifts every upgradable die
-  one tier (and grants a bonus die via `bonusDie` when 2 or fewer dice are
-  upgradable, so the path doesn't stall); `add-die` is gated by `MAX_DICE`.
+  union (`add-die` | `upgrade` | `sticker` | `randomise`). `upgrade` lifts every
+  upgradable die one tier (and grants a bonus die via `bonusDie` when 2 or fewer
+  dice are upgradable, so the path doesn't stall); `add-die` is gated by
+  `MAX_DICE`; `randomise` swaps one die for a random type, weighted 75% up / 25%
+  down along `DIE_LADDER`.
 - `src/App.tsx` — the only React component. Owns all game state (round, roll,
   score, target, dice, rewards) and the roll/score/reward loop.
 

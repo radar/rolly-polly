@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { Game } from './game';
-import { DieD6, DieD8, DieD10, DieD12 } from './die';
+import { DieD6, DieD8, DieD10, DieD12, DiePercent, DiePower, DieWild, Wild } from './die';
 
-import { Addition as AdditionSticker, Multiplier as MultiplierSticker } from "./sticker"
+import { Addition as AdditionSticker, Multiplier as MultiplierSticker, Percentage as PercentageSticker } from "./sticker"
 
 describe('Game', () => {
   it('calculates a total score with given roll', () => {
@@ -290,5 +290,68 @@ it('calculates a total score with a pair', () => {
     // D6 max bonus = 3
     // Total = 37 + 3 = 40
     expect(game.calculate(dice)).toBe(40);
+  });
+
+  it('applies a percentage die as a whole-score boost', () => {
+    const game = new Game();
+    const dice = [
+      new DieD6(4),
+      new DieD6(2),
+      new DiePercent(new PercentageSticker(50)),
+    ];
+    // Subtotal = 6 (the percentage face is non-numeric).
+    // +50% => 6 * 1.5 = 9
+    expect(game.calculate(dice)).toBe(9);
+  });
+
+  it('stacks a percentage die additively with a multiplier sticker', () => {
+    const game = new Game();
+    const dice = [
+      new DieD6(4),
+      new DieD6(new MultiplierSticker(3)),
+      new DiePercent(new PercentageSticker(50)),
+    ];
+    // Subtotal = 4. Bonus = (3 - 1) + (50 / 100) = 2.5 => 4 * 3.5 = 14
+    expect(game.calculate(dice)).toBe(14);
+  });
+
+  it('lets wild dice complete a matched-set combo', () => {
+    const game = new Game();
+    const dice = [
+      new DiePower(8),
+      new DieWild(new Wild()),
+      new DieWild(new Wild()),
+    ];
+    // Subtotal = 8 (wilds are non-numeric). Two wilds join the 8 => triple of 8.
+    // Triple = 8 * 6 = 48. Total = 8 + 48 = 56
+    expect(game.calculate(dice)).toBe(56);
+  });
+
+  it('sends wilds to the matched set that gains the most', () => {
+    const game = new Game();
+    const dice = [
+      new DiePower(2),
+      new DiePower(2),
+      new DiePower(16),
+      new DieWild(new Wild()),
+    ];
+    // Subtotal = 20. The wild is worth more on the 16 (pair = 48) than as a
+    // third 2 (triple 12 vs pair 6, +6). Pair of 2 = 6, Pair of 16 = 48.
+    // Total = 20 + 6 + 48 = 74
+    expect(game.calculate(dice)).toBe(74);
+  });
+
+  it('lets a wild fill the gap in a straight', () => {
+    const game = new Game();
+    const dice = [
+      new DieD6(2),
+      new DieD6(3),
+      new DieD6(4),
+      new DieD6(5),
+      new DieWild(new Wild()),
+    ];
+    // Subtotal = 14 (wild is non-numeric). The wild extends 2-3-4-5 to a
+    // straight to 6: 6 * 6 = 36. Total = 14 + 36 = 50
+    expect(game.calculate(dice)).toBe(50);
   });
 });

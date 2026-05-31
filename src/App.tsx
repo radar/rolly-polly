@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import "./App.css";
 import mousetrap from "mousetrap";
 
-import { type Die, getRandomDie } from "./die";
+import { type Die, getRandomDie, Wild } from "./die";
+import { Addition, Multiplier, Percentage } from "./sticker";
 
 import { Game } from "./game";
 import { BASE_SCORE, targetForRound } from "./progression";
@@ -13,138 +14,126 @@ import { type Modifier, modifierForRound } from "./modifier";
 const targetFor = (round: number, modifier: Modifier | null) =>
   Math.ceil(targetForRound(round) * (modifier?.targetMultiplier ?? 1));
 
-function DiceVisualizer({ die }: { die: Die }) {
-  return (
-    <div className="die-container">
-      <div className={`${die.className} die`}>
-        <p className={`${die.className}-content`}>{die.displayRolledValue()}</p>
-      </div>
-      <div>
-        <p className="text-center mt-2 text-gray-400 text-sm">{die.name}</p>
+// Human-readable label for a single die face.
+const faceLabel = (face: number | Addition | Multiplier | Percentage | Wild): string =>
+  typeof face === "number"
+    ? String(face)
+    : face instanceof Wild
+      ? "★"
+      : face instanceof Addition
+        ? `+${face.amount}`
+        : face instanceof Percentage
+          ? `+${face.percent}%`
+          : `x${face.factor}`;
 
-        <p className="text-center">
-          <strong>{die.modificationsApplied().join(", ")}</strong>
-        </p>
-      </div>
-    </div>
-  );
+// Group a die's sticker faces into "+50×2" / "x3" style badges. The multiplier
+// die's faces are inherent (not stickers), so it gets no badge.
+function stickerBadges(die: Die): string[] {
+  if (die.className === "die-dmulti" || die.className === "die-dpercent") return [];
+  const counts = new Map<string, number>();
+  die.faces.forEach((face) => {
+    if (face instanceof Addition || face instanceof Multiplier) {
+      const key = faceLabel(face);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+  });
+  return Array.from(counts, ([label, n]) => (n > 1 ? `${label}×${n}` : label));
 }
 
-function Scorecard({
-  dice,
-  total,
-  bonuses,
-  finalTotal,
-  showBonuses,
-  showFinalTotal,
-}: {
-  dice: Die[];
-  total: number;
-  bonuses: string[];
-  finalTotal: number;
-  showBonuses: boolean;
-  showFinalTotal: boolean;
-}) {
-  const stickers = game.stickersApplied(dice);
+function DieCard({ die, onClick }: { die: Die; onClick: () => void }) {
+  const badges = stickerBadges(die);
   return (
-    <div>
-      <div className="total mt-2">Sum: {total}</div>
-      {showBonuses && (
-        <div>
-          <div className="bonuses mt-2 sm:mt-4">
-            <p className="text-sm text-gray-500">Bonuses</p>
-            <div className="flex flex-wrap justify-center gap-1 mt-1">
-              {bonuses.map((bonus, index) => {
-                const penalty = bonus.includes("(-");
-                const neutral = bonus === "None!";
-                const color = neutral
-                  ? "bg-gray-100 text-gray-600"
-                  : penalty
-                    ? "bg-red-100 text-red-700"
-                    : "bg-green-100 text-green-700";
-                return (
-                  <span key={index} className={`text-sm rounded-full px-2 py-0.5 ${color}`}>
-                    {bonus}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
-
-          {stickers.length > 0 && (
-            <div className="stickers mt-2 sm:mt-4">
-              <p className="text-sm text-gray-500">Stickers</p>
-              <div className="flex flex-wrap justify-center gap-1 mt-1">
-                {stickers.map((sticker, index) => (
-                  <span
-                    key={index}
-                    className="text-sm bg-green-100 text-green-700 rounded-full px-2 py-0.5"
-                  >
-                    {sticker}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+    <button className={`${die.className} die-card`} onClick={onClick}>
+      <span className="text-xs font-bold tracking-wide text-gray-500 dark:text-gray-400">
+        {die.name}
+      </span>
+      <span className="flex-1 grid place-items-center w-full text-3xl sm:text-4xl font-extrabold leading-none py-2">
+        {die.displayRolledValue() ?? "·"}
+      </span>
+      {badges.length > 0 && (
+        <span className="flex flex-wrap justify-center gap-1 w-full">
+          {badges.map((badge, index) => (
+            <span
+              key={index}
+              className="text-xs font-bold rounded-md px-1.5 py-0.5 bg-emerald-500 text-white"
+            >
+              {badge}
+            </span>
+          ))}
+        </span>
       )}
-      {showFinalTotal && (
-        <div className="final-total mt-2 sm:mt-4 text-2xl font-bold">
-          Final Total: {finalTotal}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Roller({
-  dice,
-  rolling,
-  onRoll,
-  total,
-  bonuses,
-  finalTotal,
-  showBonuses,
-  showFinalTotal,
-}: {
-  dice: Die[];
-  rolling: boolean;
-  onRoll: () => void;
-  total: number;
-  bonuses: string[];
-  finalTotal: number;
-  showBonuses: boolean;
-  showFinalTotal: boolean;
-}) {
-  return (
-    <div className="text-center">
-      <button
-        onClick={onRoll}
-        disabled={rolling}
-        className="bg-blue-500 text-white py-3 px-4 rounded mb-3 sm:mb-4 w-full sm:w-auto hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        Roll Die
-      </button>
-      <div className="flex flex-wrap justify-center gap-3 sm:gap-4 w-full">
-        {dice.map((die, index) => (
-          <DiceVisualizer key={index} die={die} />
-        ))}
-      </div>
-      <Scorecard
-        dice={dice}
-        total={total}
-        bonuses={bonuses}
-        finalTotal={finalTotal}
-        showBonuses={showBonuses}
-        showFinalTotal={showFinalTotal}
-      />
-    </div>
+    </button>
   );
 }
 
 const game = new Game();
 const maxRollsPerRound = 5;
 const freshDice = () => Array.from({ length: 6 }, () => getRandomDie(6, 8, 10, 12));
+
+const RULES: { heading?: string; body: string[] }[] = [
+  { body: ["Beat the rising target before you run out of rolls."] },
+  {
+    heading: "Goal",
+    body: [
+      "Start with 6 dice — a random mix of d6/d8/d10/d12.",
+      "5 rolls per round; your score accumulates across rolls.",
+      "Hit the target to earn a reward. Run out of rolls and it's game over.",
+    ],
+  },
+  {
+    heading: "Scoring",
+    body: [
+      "Subtotal of all numeric faces.",
+      "Max-roll bonus and min-roll penalty per die.",
+      "Combos: Pair v×3, Triple v×6, Quad v×8, Five v×10, Six v×16, Straight v×6.",
+      "Stickers: addition stickers (+50, +100) apply to your score first. Multiplier stickers (x3, x4) come next — but they add together rather than pile on. Example: a x3 and a x4 landing at once combine into a x6 (not x12), so a 50-point roll becomes 300 instead of 600.",
+      "Percentage dice (D%) boost the whole score by the percent they roll, stacking additively with multipliers.",
+      "Special dice: Prime & Power for raw value, Glass for all-or-nothing max/min swings, and the rare Wild (★) — a joker that joins whichever combo it makes biggest.",
+    ],
+  },
+  {
+    heading: "Rewards (pick 1 of 3)",
+    body: [
+      "New die — a random die joins your pool (cap 12).",
+      "Upgrade — every upgradable die goes up one tier (D6→D8…); bundles a free die when 2 or fewer dice are upgradable.",
+      "Sticker — paste a multiplier or addition onto one die.",
+      "Randomise — swap one die for a random type. Usually a step up, but a 1-in-4 chance it steps down.",
+    ],
+  },
+  {
+    heading: "Modifiers (from round 4)",
+    body: [
+      "Each round rolls a random rule — Pairs Pay Double, Straight Fever, Bonus Roll, Big Numbers, Combo Lockout, Crit Day, and more.",
+    ],
+  },
+  { heading: "Tip", body: ["Tap any die in the grid to see its current face pool."] },
+];
+
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full sm:max-w-md max-h-[85vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-white text-gray-900 dark:bg-slate-800 dark:text-white p-5 shadow-xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold">{title}</h2>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-lg grid place-items-center bg-gray-200 dark:bg-slate-700 hover:brightness-110"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 function App() {
   const [dice, setDice] = useState(freshDice);
@@ -161,6 +150,19 @@ function App() {
 
   const [showBonuses, setShowBonuses] = useState(false);
   const [showFinalTotal, setShowFinalTotal] = useState(false);
+
+  const [dark, setDark] = useState(() => {
+    const saved = localStorage.getItem("theme");
+    if (saved) return saved === "dark";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  });
+  const [showRules, setShowRules] = useState(false);
+  const [facesDie, setFacesDie] = useState<Die | null>(null);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", dark);
+    localStorage.setItem("theme", dark ? "dark" : "light");
+  }, [dark]);
 
   const maxRolls = modifier?.rolls ?? maxRollsPerRound;
 
@@ -248,7 +250,7 @@ function App() {
   // so we never leave a stale handler bound across re-renders.
   useEffect(() => {
     mousetrap.bind("space", () => {
-      if (!rolling && !upgrading && !lost) {
+      if (!rolling && !upgrading && !lost && !showRules && !facesDie) {
         rollDie();
       }
     });
@@ -257,75 +259,179 @@ function App() {
     };
   });
 
-  const total = game.calculateSubTotal(dice);
   const bonuses = game.bonusesApplied(dice, modifier);
+  const stickers = game.stickersApplied(dice);
   const finalTotal = game.calculate(dice, modifier);
+  const rollsLeft = Math.max(0, maxRolls - roll);
+
+  const iconButton =
+    "w-11 h-11 rounded-xl grid place-items-center text-lg font-bold bg-gray-200 text-gray-700 dark:bg-slate-700 dark:text-gray-200 hover:brightness-110 transition";
 
   return (
-    <>
-      <div className="py-4 sm:py-8 px-4 overflow-x-hidden">
-        <div className="text-center">
-          <h1 className="text-2xl sm:text-4xl font-bold mb-2 sm:mb-4">Rolly Polly!</h1>
-          <div className="mb-3 sm:mb-4 flex flex-wrap justify-center gap-x-3 gap-y-1">
-            <span>Round {round}</span>
-            <span className="text-gray-400">·</span>
-            <span>Roll {roll}/{maxRolls}</span>
-            <span className="text-gray-400">·</span>
-            <span>Score {score} / {targetScore}</span>
+    <div className="min-h-screen transition-colors">
+      <div className="max-w-md mx-auto px-4 py-8 min-h-screen flex flex-col">
+        {/* Header */}
+        <header className="relative text-center">
+          <div className="absolute right-0 top-0 flex gap-2">
+            <button onClick={() => setDark((value) => !value)} className={iconButton} aria-label="Toggle theme">
+              {dark ? "☀️" : "🌙"}
+            </button>
+            <button onClick={() => setShowRules(true)} className={iconButton} aria-label="Rules">
+              ?
+            </button>
           </div>
 
-          {modifier && (
-            <div className="modifier-notice mb-3 sm:mb-4 p-2 bg-purple-100 border border-purple-300 rounded">
-              <span className="font-bold">{modifier.name}</span>
-              <span className="block sm:inline text-xs sm:text-sm text-gray-600 sm:before:content-['_—_']">
-                {modifier.description}
-              </span>
-            </div>
-          )}
+          <h1 className="text-3xl sm:text-4xl font-extrabold">Rolly Polly!</h1>
+          <p className="mt-1 text-gray-500 dark:text-gray-400">
+            Round {round} <span className="px-1">•</span> Roll {roll}/{maxRolls}
+          </p>
+          <p className="text-xl font-bold">
+            Score {score} <span className="text-gray-400 dark:text-gray-500">/</span> Target {targetScore}
+          </p>
+        </header>
 
-          {lost ? (
-            <div className="lost-notice mt-4 p-4 bg-red-100 border border-red-300 rounded">
-              <p className="font-bold">You Lost!</p>
-              <p>You made it to round {round}.</p>
+        {modifier && (
+          <div className="mt-5 rounded-2xl border px-4 py-3 text-center bg-purple-100 border-purple-300 text-purple-900 dark:bg-purple-900/40 dark:border-purple-500/50 dark:text-white">
+            <p className="font-bold">{modifier.name}</p>
+            <p className="text-sm opacity-80">{modifier.description}</p>
+          </div>
+        )}
+
+        {lost ? (
+          <div className="flex-1 flex flex-col justify-center">
+            <div className="rounded-2xl border px-4 py-6 text-center bg-red-100 border-red-300 text-red-900 dark:bg-red-900/40 dark:border-red-500/50 dark:text-white">
+              <p className="text-2xl font-bold">You Lost!</p>
+              <p className="mt-1">You made it to round {round}.</p>
               <button
                 onClick={restart}
-                className="mt-4 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
+                className="mt-5 w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl font-bold transition"
               >
                 Play Again
               </button>
             </div>
-          ) : upgrading ? (
-            <div className="upgrade-notice mt-4 p-4 bg-yellow-100 border border-yellow-300 rounded">
-              <p className="font-bold">Choose Your Reward!</p>
-              <p>Three rewards were rolled at random — pick one to keep.</p>
-
-              <div className="mt-4 flex flex-col md:flex-row justify-center gap-3 sm:gap-4">
+          </div>
+        ) : upgrading ? (
+          <div className="flex-1 flex flex-col justify-center">
+            <div className="rounded-2xl border px-4 py-6 text-center bg-amber-100 border-amber-300 text-amber-900 dark:bg-amber-900/30 dark:border-amber-500/50 dark:text-white">
+              <p className="text-2xl font-bold">Choose Your Reward!</p>
+              <p className="mt-1 text-sm opacity-80">Three rewards were rolled at random — pick one to keep.</p>
+              <div className="mt-5 flex flex-col gap-3">
                 {rewards.map((reward, index) => (
                   <button
                     key={index}
                     onClick={() => chooseReward(reward)}
-                    className="bg-blue-500 text-white py-3 px-4 rounded w-full md:w-auto md:flex-1 hover:bg-blue-600"
+                    className="bg-blue-500 hover:bg-blue-600 text-white py-3 px-4 rounded-xl font-semibold transition"
                   >
                     {reward.label}
                   </button>
                 ))}
               </div>
             </div>
-          ) : (
-            <Roller
-              dice={dice}
-              rolling={rolling}
-              onRoll={rollDie}
-              total={total}
-              bonuses={bonuses}
-              finalTotal={finalTotal}
-              showBonuses={showBonuses}
-              showFinalTotal={showFinalTotal}
-            />
-          )}
-        </div>
+          </div>
+        ) : (
+          <main className="flex-1 flex flex-col">
+            {/* Dice */}
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              {dice.map((die, index) => (
+                <DieCard key={index} die={die} onClick={() => setFacesDie(die)} />
+              ))}
+            </div>
+
+            {/* Last roll */}
+            {showFinalTotal && (
+              <p className="mt-5 text-center text-xl font-bold text-emerald-500">
+                Last roll: +{finalTotal}
+              </p>
+            )}
+
+            {/* Scorecard */}
+            {showBonuses && (
+              <div className="mt-4 text-sm">
+                <p className="text-gray-500 dark:text-gray-400">Bonuses</p>
+                <ul className="mt-1 pl-3 space-y-0.5">
+                  {bonuses.map((bonus, index) => {
+                    const penalty = bonus.includes("(-");
+                    const neutral = bonus === "None!";
+                    const color = neutral
+                      ? "text-gray-500 dark:text-gray-400"
+                      : penalty
+                        ? "text-red-500"
+                        : "text-emerald-500";
+                    return (
+                      <li key={index} className={color}>
+                        {bonus}
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                {stickers.length > 0 && (
+                  <>
+                    <p className="mt-3 text-gray-500 dark:text-gray-400">Stickers</p>
+                    <ul className="mt-1 pl-3 space-y-0.5">
+                      {stickers.map((sticker, index) => (
+                        <li key={index} className="text-emerald-500">
+                          {sticker}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Roll button pinned to the foot of the column */}
+            <div className="mt-auto pt-8">
+              <button
+                onClick={rollDie}
+                disabled={rolling}
+                className="w-full bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 rounded-2xl text-lg font-bold transition"
+              >
+                Roll Dice ({rollsLeft} left)
+              </button>
+            </div>
+          </main>
+        )}
       </div>
-    </>
+
+      {showRules && (
+        <Modal title="How to play" onClose={() => setShowRules(false)}>
+          <div className="space-y-4 text-sm">
+            {RULES.map((section, index) => (
+              <div key={index}>
+                {section.heading && <h3 className="font-bold mb-1">{section.heading}</h3>}
+                {section.body.map((line, lineIndex) =>
+                  section.heading ? (
+                    <p key={lineIndex} className="text-gray-600 dark:text-gray-300">
+                      • {line}
+                    </p>
+                  ) : (
+                    <p key={lineIndex} className="font-semibold">
+                      {line}
+                    </p>
+                  )
+                )}
+              </div>
+            ))}
+          </div>
+        </Modal>
+      )}
+
+      {facesDie && (
+        <Modal title={`${facesDie.name} — face pool`} onClose={() => setFacesDie(null)}>
+          <div className="flex flex-wrap gap-2">
+            {facesDie.faces.map((face, index) => (
+              <span
+                key={index}
+                className="min-w-9 px-2 py-1 rounded-lg text-center font-bold bg-gray-100 dark:bg-slate-700"
+              >
+                {faceLabel(face)}
+              </span>
+            ))}
+          </div>
+        </Modal>
+      )}
+    </div>
   );
 }
 

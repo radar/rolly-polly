@@ -1,17 +1,23 @@
 
-import { Addition as AdditionSticker, Multiplier as MultiplierSticker, StickerFactory, type Sticker } from "./sticker"
+import { Addition as AdditionSticker, Multiplier as MultiplierSticker, Percentage as PercentageSticker, StickerFactory, type Sticker } from "./sticker"
+
+// A joker face: it has no numeric value of its own, but during scoring it joins
+// the matched-set combo that gains the most (see Game.comboBonuses). Marker
+// class — its mere instance type is the signal.
+class Wild {}
 
 type Die = BaseDie | DieD6 | DieD8 | DieD10 | DieD12 | DieD20
-type RolledValue = number | Sticker | null;
+type Face = number | Sticker | Wild;
+type RolledValue = Face | null;
 
 class BaseDie {
   name = ""
   className = ""
-  faces: (number | Sticker)[];
+  faces: Face[];
   rolledValue: RolledValue = null;
   canUpgrade = true;
 
-  constructor(faces: (number | Sticker)[], rolledValue: RolledValue = null) {
+  constructor(faces: Face[], rolledValue: RolledValue = null) {
     this.faces = faces;
     this.rolledValue = rolledValue;
   }
@@ -64,7 +70,7 @@ class BaseDie {
     return -Math.floor(this.highestNumber() / 2);
   }
 
-  roll(): number | Sticker {
+  roll(): Face {
     const randomIndex = Math.floor(Math.random() * this.faces.length);
     this.rolledValue = this.faces[randomIndex];
     return this.rolledValue;
@@ -75,6 +81,10 @@ class BaseDie {
       return `+${this.rolledValue.amount}`;
     } else if (this.rolledValue instanceof MultiplierSticker) {
       return `x${this.rolledValue.factor}`;
+    } else if (this.rolledValue instanceof PercentageSticker) {
+      return `+${this.rolledValue.percent}%`;
+    } else if (this.rolledValue instanceof Wild) {
+      return "★";
     } else if (typeof this.rolledValue === 'number') {
       return this.rolledValue.toString();
     }
@@ -246,6 +256,73 @@ class DieMultiplier extends BaseDie {
   }
 }
 
+class DiePercent extends BaseDie {
+  name = "D%";
+  className = "die-dpercent"
+  canUpgrade = false;
+
+  constructor(rolledValue: RolledValue = null) {
+    // A pure upside die: each face boosts the whole score by that percent. A 0
+    // face keeps it a gamble rather than free points. EV = +25%.
+    super([
+      new PercentageSticker(0),
+      new PercentageSticker(10),
+      new PercentageSticker(20),
+      new PercentageSticker(30),
+      new PercentageSticker(40),
+      new PercentageSticker(50),
+    ], rolledValue);
+  }
+}
+
+class DiePrime extends BaseDie {
+  name = "Prime";
+  className = "die-dprime"
+  canUpgrade = false;
+  constructor(rolledValue: RolledValue = null) {
+    // Sparse spread — near-impossible to pair or straight, a raw-value gamble.
+    super([2, 3, 5, 7, 11, 13], rolledValue);
+  }
+}
+
+class DiePower extends BaseDie {
+  name = "Power";
+  className = "die-dpower"
+  canUpgrade = false;
+  constructor(rolledValue: RolledValue = null) {
+    // Doubling ladder: a huge top end (32) but weak combo odds. High variance.
+    super([1, 2, 4, 8, 16, 32], rolledValue);
+  }
+}
+
+class DieGlass extends BaseDie {
+  name = "Glass";
+  className = "die-dglass"
+  canUpgrade = false;
+  constructor(rolledValue: RolledValue = null) {
+    // Glass cannon: max-roll bonus farmer when it hits 20, min-roll penalty
+    // when it whiffs to 1. No middle ground.
+    super([20, 20, 20, 1, 1, 1], rolledValue);
+  }
+}
+
+class DieWild extends BaseDie {
+  name = "Wild";
+  className = "die-dwild"
+  canUpgrade = false;
+  constructor(rolledValue: RolledValue = null) {
+    // Every face is a joker — it always rolls wild and joins the best combo.
+    super([new Wild(), new Wild(), new Wild(), new Wild(), new Wild(), new Wild()], rolledValue);
+  }
+
+  // No numeric faces, so the inherited max/min logic would read ±Infinity.
+  // A wild never earns a max bonus or a min penalty.
+  maxBonus(): number { return 0; }
+  minPenalty(): number { return 0; }
+  rolledMax(): boolean { return false; }
+  rolledMin(): boolean { return false; }
+}
+
 const getRandomDie = (...possibilities: Array<number | string>): Die => {
   const randomIndex = Math.floor(Math.random() * possibilities.length);
 
@@ -258,6 +335,16 @@ const getRandomDie = (...possibilities: Array<number | string>): Die => {
       return new DieFib();
     case "multi":
       return new DieMultiplier();
+    case "percent":
+      return new DiePercent();
+    case "prime":
+      return new DiePrime();
+    case "power":
+      return new DiePower();
+    case "glass":
+      return new DieGlass();
+    case "wild":
+      return new DieWild();
     case 1:
       return new DieD1();
     case 2:
@@ -279,4 +366,4 @@ const getRandomDie = (...possibilities: Array<number | string>): Die => {
   }
 }
 
-export { BaseDie, DieD1, DieD2, DieD4, DieD6, DieD8, DieD10, DieD12, DieD20, DieOdd, DieEven, DieFib, type Die, getRandomDie };
+export { BaseDie, Wild, DieD1, DieD2, DieD4, DieD6, DieD8, DieD10, DieD12, DieD20, DieOdd, DieEven, DieFib, DieMultiplier, DiePercent, DiePrime, DiePower, DieGlass, DieWild, type Die, getRandomDie };

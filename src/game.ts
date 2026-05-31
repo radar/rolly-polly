@@ -1,9 +1,9 @@
-import { Addition as AdditionSticker, Multiplier as MultiplierSticker, type Sticker } from "./sticker"
-import { BaseDie, DieD6 } from "./die"
+import { Addition as AdditionSticker, Multiplier as MultiplierSticker, Percentage as PercentageSticker, type Sticker } from "./sticker"
+import { BaseDie, DieD6, Wild } from "./die"
 import type { Modifier, ComboMods } from "./modifier"
 
 type Die = BaseDie | DieD6;
-type Roll = number | Sticker | null;
+type Roll = number | Sticker | Wild | null;
 type Dice = Die[];
 
 class Game {
@@ -141,6 +141,8 @@ class Game {
         stickers.push(`Die ${index + 1}: +${roll.amount}`);
       } else if (roll instanceof MultiplierSticker) {
         stickers.push(`Die ${index + 1}: x${roll.factor}`);
+      } else if (roll instanceof PercentageSticker) {
+        stickers.push(`Die ${index + 1}: +${roll.percent}%`);
       }
     });
 
@@ -167,11 +169,15 @@ class Game {
     // x12), so several stickers landing at once can't explode the score the
     // way a runaway multiplicative product did. Clamped at 0 (sub-1 factors,
     // e.g. the Dmulti die, can pull it down but never negative).
+    // Percentage dice fold in here too: a "+30%" face contributes 0.3 to the
+    // same additive bonus, so it stacks with multipliers without exploding.
     let multiplierBonus = 0;
     dice.forEach((die) => {
       const roll = die.rolledValue;
       if (roll instanceof MultiplierSticker) {
         multiplierBonus += roll.factor - 1;
+      } else if (roll instanceof PercentageSticker) {
+        multiplierBonus += roll.percent / 100;
       }
     });
     if (multiplierBonus !== 0) {
@@ -200,37 +206,96 @@ class Game {
   // human-readable line per combo for the scorecard. A round modifier's combo
   // rules can disable combos, scale pairs/straights, or shorten the straight.
   comboBonuses(dice: Dice, combo: ComboMods | null = null): { total: number; lines: string[] } {
-    let total = 0;
-    const lines: string[] = [];
-
     if (combo?.disabled) {
-      return { total, lines };
+      return { total: 0, lines: [] };
     }
 
     const pairScale = combo?.pairScale ?? 1;
-    for (const [value, count] of this.valueCounts(dice)) {
-      let bonus = 0;
-      let name = '';
-      if (count === 2) { bonus = value * Game.PAIR_FACTOR * pairScale; name = 'Pair'; }
-      else if (count === 3) { bonus = value * Game.TRIPLE_FACTOR; name = 'Triple'; }
-      else if (count === 4) { bonus = value * Game.QUAD_FACTOR; name = 'Quad'; }
-      else if (count === 5) { bonus = value * Game.FIVE_FACTOR; name = 'Five'; }
-      else if (count >= 6) { bonus = value * Game.SIX_FACTOR; name = 'Six'; }
-      if (bonus > 0) {
-        total += bonus;
-        lines.push(`${name} of ${value} (+${bonus})`);
+
+    // Value-scaled bonus for a matched set of `count` dice showing `value`.
+    const setBonus = (value: number, count: number): { bonus: number; name: string } => {
+      if (count >= 6) return { bonus: value * Game.SIX_FACTOR, name: 'Six' };
+      if (count === 5) return { bonus: value * Game.FIVE_FACTOR, name: 'Five' };
+      if (count === 4) return { bonus: value * Game.QUAD_FACTOR, name: 'Quad' };
+      if (count === 3) return { bonus: value * Game.TRIPLE_FACTOR, name: 'Triple' };
+      if (count === 2) return { bonus: value * Game.PAIR_FACTOR * pairScale, name: 'Pair' };
+      return { bonus: 0, name: '' };
+    };
+
+    const counts = this.valueCounts(dice);
+    const wildCount = dice.filter((die) => die.rolledValue instanceof Wild).length;
+
+    // Matched-set score when `wildsForSets` jokers are available: they all pile
+    // onto the single value whose set gains the most (a lone 13 + two wilds ->
+    // triple 13). Returns the total and a scorecard line per set.
+    const setScore = (wildsForSets: number): { total: number; lines: string[] } => {
+      let wildValue: number | null = null;
+      if (wildsForSets > 0) {
+        let bestDelta = 0;
+        for (const [value, count] of counts) {
+          const delta = setBonus(value, count + wildsForSets).bonus - setBonus(value, count).bonus;
+          if (delta > bestDelta) {
+            bestDelta = delta;
+            wildValue = value;
+          }
+        }
+      }
+      let setTotal = 0;
+      const setLines: string[] = [];
+      for (const [value, count] of counts) {
+        const effective = value === wildValue ? count + wildsForSets : count;
+        const { bonus, name } = setBonus(value, effective);
+        if (bonus > 0) {
+          setTotal += bonus;
+          setLines.push(`${name} of ${value}${value === wildValue ? ' (wild)' : ''} (+${bonus})`);
+        }
+      }
+      return { total: setTotal, lines: setLines };
+    };
+
+    // Candidate straights: every length-`needs` window with at least one real
+    // die in it (wilds fill the gaps but can't fabricate a straight from
+    // nothing). Each records how many wilds it would consume.
+    const needs = combo?.straightNeeds ?? 5;
+    const straightScale = combo?.straightScale ?? 1;
+    const present = new Set(this.numericRolls(dice));
+    const maxPresent = present.size ? Math.max(...present) : 0;
+    const straights: { high: number; wildsUsed: number }[] = [];
+    for (let high = maxPresent + wildCount; high >= needs; high--) {
+      const low = high - needs + 1;
+      if (low < 1) continue;
+      let inWindow = 0;
+      for (let value = low; value <= high; value++) if (present.has(value)) inWindow++;
+      const wildsUsed = needs - inWindow;
+      if (inWindow >= 1 && wildsUsed <= wildCount) {
+        straights.push({ high, wildsUsed });
       }
     }
 
-    const run = this.straightRun(dice, combo?.straightNeeds ?? 5);
-    if (run) {
-      const high = run[run.length - 1];
-      const bonus = high * Game.STRAIGHT_FACTOR * (combo?.straightScale ?? 1);
-      total += bonus;
-      lines.push(`Straight to ${high} (+${bonus})`);
-    }
+    // Wilds are shared between sets and the straight, so pick the split that
+    // scores the most: no straight (all wilds to sets), or each candidate
+    // straight with the remaining wilds spent on sets.
+    let bestTotal = 0;
+    let bestLines: string[] = [];
+    const consider = (straight: { high: number; wildsUsed: number } | null) => {
+      const used = straight ? straight.wildsUsed : 0;
+      const sets = setScore(wildCount - used);
+      let candidate = sets.total;
+      const candidateLines = [...sets.lines];
+      if (straight) {
+        const bonus = straight.high * Game.STRAIGHT_FACTOR * straightScale;
+        candidate += bonus;
+        candidateLines.push(`Straight to ${straight.high}${used > 0 ? ' (wild)' : ''} (+${bonus})`);
+      }
+      if (candidate > bestTotal) {
+        bestTotal = candidate;
+        bestLines = candidateLines;
+      }
+    };
+    consider(null);
+    straights.forEach(consider);
 
-    return { total, lines };
+    return { total: bestTotal, lines: bestLines };
   }
 
   // Highest-value run of `length` consecutive face values, or null if none.

@@ -90,4 +90,13 @@ describe('applyReward', () => {
     });
     expect(dice[0].faces.filter((f) => f instanceof Addition)).toHaveLength(2);
   });
+
+  it('randomises the die at the given index, leaving the rest alone', () => {
+    const dice = [new DieD6(), new DieD6()];
+    const replacement = new DieD20();
+    const next = applyReward(dice, { kind: 'randomise', label: '', dieIndex: 1, die: replacement });
+    expect(next).toHaveLength(2);
+    expect(next[1]).toBe(replacement);
+    expect(next[0]).toBe(dice[0]);
+  });
 });

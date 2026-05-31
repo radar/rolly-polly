@@ -12,7 +12,16 @@ class Addition {
   }
 }
 
-type Sticker = Multiplier | Addition;
+// Whole-score percentage boost. Like a Multiplier, but expressed as "+30%"; it
+// folds into the same additive multiplier step so several can't explode the score.
+class Percentage {
+  percent: number;
+  constructor(percent: number) {
+    this.percent = percent;
+  }
+}
+
+type Sticker = Multiplier | Addition | Percentage;
 
 class StickerFactory {
   static createMultiplier(factor: number): Multiplier {
@@ -36,4 +45,4 @@ class StickerFactory {
   }
 }
 
-export { Multiplier, Addition, type Sticker, StickerFactory };
+export { Multiplier, Addition, Percentage, type Sticker, StickerFactory };
