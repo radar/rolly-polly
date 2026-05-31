@@ -78,7 +78,7 @@ function stickerDisplay(value: string): string {
 
 function makeAddDieReward(): Reward {
   const die = getRandomDie(...DIE_POOL);
-  return { kind: "add-die", die, label: `New ${die.name}` };
+  return { kind: "add-die", die, label: `New Die: ${die.name}` };
 }
 
 function makeUpgradeReward(dice: Die[]): Reward {
@@ -93,7 +93,7 @@ function makeUpgradeReward(dice: Die[]): Reward {
   const bonusDie = upgradableCount <= 2 && dice.length < MAX_DICE ? getRandomDie(...DIE_POOL) : undefined;
 
   const label = bonusDie
-    ? `Upgrade dice +1 tier & add ${bonusDie.name}`
+    ? `Upgrade all dice +1 tier & New Die: ${bonusDie.name}`
     : `Upgrade all dice +1 tier (${upgradableCount} dice)`;
 
   return { kind: "upgrade", label, bonusDie };
@@ -117,7 +117,9 @@ function makeRandomiseReward(dice: Die[]): Reward {
   if (candidates.length === 0) candidates = DIE_LADDER.filter((_, i) => i !== rank);
 
   const die = getRandomDie(pick(candidates));
-  return { kind: "randomise", dieIndex, die, label: `Randomise ${current.name} → ${die.name}` };
+  // Keep the result a secret — the label names the die being randomised but not
+  // what it becomes, so it stays a gamble.
+  return { kind: "randomise", dieIndex, die, label: `Randomise ${current.name} (mystery result)` };
 }
 
 function makeStickerReward(dice: Die[]): Reward {
