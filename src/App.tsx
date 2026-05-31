@@ -420,14 +420,22 @@ function App() {
       {facesDie && (
         <Modal title={`${facesDie.name} — face pool`} onClose={() => setFacesDie(null)}>
           <div className="flex flex-wrap gap-2">
-            {facesDie.faces.map((face, index) => (
-              <span
-                key={index}
-                className="min-w-9 px-2 py-1 rounded-lg text-center font-bold bg-gray-100 dark:bg-slate-700"
-              >
-                {faceLabel(face)}
-              </span>
-            ))}
+            {facesDie.faces.map((face, index) => {
+              const bg =
+                face instanceof Addition
+                  ? "bg-emerald-500 text-white"
+                  : face instanceof Multiplier
+                    ? "bg-orange-400 text-white"
+                    : "bg-gray-100 dark:bg-slate-700";
+              return (
+                <span
+                  key={index}
+                  className={`min-w-9 px-2 py-1 rounded-lg text-center font-bold ${bg}`}
+                >
+                  {faceLabel(face)}
+                </span>
+              );
+            })}
           </div>
         </Modal>
       )}
