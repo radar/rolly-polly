@@ -92,7 +92,21 @@ const RULES: { heading?: string; body: string[] }[] = [
       "Combos: Pair v×3, Triple v×6, Quad v×8, Five v×10, Six v×16, Straight v×6.",
       "Stickers: addition stickers (+50, +100) apply to your score first. Multiplier stickers (x3, x4) come next — but they add together rather than pile on. Example: a x3 and a x4 landing at once combine into a x6 (not x12), so a 50-point roll becomes 300 instead of 600.",
       "Percentage dice (D%) boost the whole score by the percent they roll, stacking additively with multipliers.",
-      "Special dice: Prime & Power for raw value, Glass for all-or-nothing max/min swings, and the rare Wild (★) — a joker that joins whichever combo it makes biggest.",
+    ],
+  },
+  {
+    heading: "Dice tiers",
+    body: [
+      "Standard ladder: D1 → D2 → D4 → D6 → D8 → D10 → D12 → D20. Higher tier = bigger faces (1…N), more raw value and combo range. Only these dice upgrade.",
+      "Odd / Even — faces are the odds (1–9) or evens (2–10).",
+      "Fib — Fibonacci faces: 1, 1, 2, 3, 5, 8, 13, 21.",
+      "Prime — prime faces (2, 3, 5, 7, 11, 13); solid value, poor combo odds.",
+      "Power — doubling faces (1, 2, 4, 8, 16, 32); huge top end, high variance.",
+      "Glass — all 20s and 1s: a big max-roll bonus or a big min-roll penalty, nothing in between.",
+      "Multi (×) — multiplies your whole score (×0 to ×3; can whiff to nothing).",
+      "Percent (%) — boosts your whole score by 0–50%.",
+      "Wild (★, rare) — a valueless joker that joins whichever combo it makes biggest.",
+      "Every die except the standard ladder is non-upgradable — you only get them from rewards.",
     ],
   },
   {
