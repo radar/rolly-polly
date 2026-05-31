@@ -259,6 +259,7 @@ function App() {
     };
   });
 
+  const subtotal = game.calculateSubTotal(dice);
   const bonuses = game.bonusesApplied(dice, modifier);
   const stickers = game.stickersApplied(dice);
   const finalTotal = game.calculate(dice, modifier);
@@ -347,7 +348,10 @@ function App() {
             {/* Scorecard */}
             {showBonuses && (
               <div className="mt-4 text-sm">
-                <p className="text-gray-500 dark:text-gray-400">Bonuses</p>
+                <p className="text-gray-500 dark:text-gray-400">
+                  Subtotal <span className="font-bold text-gray-900 dark:text-white">{subtotal}</span>
+                </p>
+                <p className="mt-3 text-gray-500 dark:text-gray-400">Bonuses</p>
                 <ul className="mt-1 pl-3 space-y-0.5">
                   {bonuses.map((bonus, index) => {
                     const penalty = bonus.includes("(-");
