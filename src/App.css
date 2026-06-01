@@ -4,8 +4,11 @@
 /* A die rendered as a card: name on top, big value centred, sticker badge at
    the foot. The per-die colour classes below only override the border, so each
    die keeps its signature colour while sharing the card chrome. */
+/* Fixed height (not min-h): the rolled value's font size changes with its
+   length, so a flexible height would let cards grow/shrink mid-roll and shove
+   their neighbours around. */
 .die-card {
-  @apply relative flex flex-col items-center rounded-2xl border-2 p-2 w-20 sm:w-24 min-h-28 cursor-pointer transition select-none
+  @apply relative flex flex-col items-center overflow-hidden rounded-2xl border-2 p-2 w-24 h-24 cursor-pointer transition select-none
          bg-white border-gray-200 text-gray-900
          dark:bg-slate-800/60 dark:border-slate-700 dark:text-white
          hover:brightness-105 active:scale-[0.98];
@@ -13,7 +16,7 @@
 
 /* Shrink cards when the pool gets large (9+ dice) so they still fit a phone. */
 .die-card-compact {
-  @apply w-[4.25rem] sm:w-20 min-h-20 rounded-xl p-1.5;
+  @apply w-[4.25rem] sm:w-20 h-20 rounded-xl p-1.5;
 }
 
 .die-d6 { @apply border-gray-200 dark:border-slate-600; }
