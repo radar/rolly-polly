@@ -52,11 +52,13 @@ describe('modifier effects on scoring', () => {
     expect(game.calculate(pairDice(), { name: '', description: '', maxBonusScale: 2 })).toBe(39);
   });
 
-  it('Slippery doubles min-roll penalties', () => {
+  it('Slippery scales up min-roll penalties (5×)', () => {
     // 1, 1, 3, 4, 5: subtotal 14, pair of 1 (+3), two 1s are min (-3 each)
     const dice = () => [new DieD6(1), new DieD6(1), new DieD6(3), new DieD6(4), new DieD6(5)];
     expect(game.calculate(dice())).toBe(11); // 14 + 3 - 6
-    expect(game.calculate(dice(), { name: '', description: '', penaltyScale: 2 })).toBe(5); // 14 + 3 - 12
+    // base penalty -6, ×5 = -30: 14 + 3 - 30 = -13, floored to 0 (a roll never
+    // scores negative).
+    expect(game.calculate(dice(), { name: '', description: '', penaltyScale: 5 })).toBe(0);
   });
 
   it('Straight Fever lets a 4-in-a-row count as a straight', () => {
@@ -74,7 +76,8 @@ describe('modifier effects on scoring', () => {
     expect(game.calculate([new DieD20(20)], crit)).toBe(60);
     // a d20 not showing 20 does not crit (rolled 19: 19 subtotal, no max/min)
     expect(game.calculate([new DieD20(19)], crit)).toBe(19);
-    // two natural 20s stack to x4: subtotal 40 + max 20 + pair of 20 (60) = 120, x4 = 480
-    expect(game.calculate([new DieD20(20), new DieD20(20)], crit)).toBe(480);
+    // two natural 20s stack to x4: subtotal 40 + max 20 + pair of 20 (60) = 120, x4 = 480.
+    // Both dice match, so JACKPOT x10 on top = 4800.
+    expect(game.calculate([new DieD20(20), new DieD20(20)], crit)).toBe(4800);
   });
 });

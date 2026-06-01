@@ -6,6 +6,7 @@ import { StickerFactory, type Sticker } from "./sticker";
 export type Reward =
   | { kind: "add-die"; label: string; die: Die }
   | { kind: "upgrade"; label: string; bonusDie?: Die }
+  | { kind: "grow"; label: string }
   | { kind: "sticker"; label: string; dieIndex: number; sticker: Sticker }
   | { kind: "randomise"; label: string; dieIndex: number; die: Die };
 
@@ -99,6 +100,13 @@ function makeUpgradeReward(dice: Die[]): Reward {
   return { kind: "upgrade", label, bonusDie };
 }
 
+// Grow every pattern die (Odd/Even/Fib/Prime/Power) by appending the next number
+// in its sequence. A single global action, like upgrade-all.
+function makeGrowReward(dice: Die[]): Reward {
+  const count = dice.filter((die) => die.canGrow).length;
+  return { kind: "grow", label: `Grow ${count} pattern ${count === 1 ? "die" : "dice"} (+1 number each)` };
+}
+
 // Replace a random die with a random die type. Weighted 75% upgrade / 25%
 // downgrade relative to the chosen die's rung on the ladder — so it usually
 // trades up, but can hand back something weaker.
@@ -142,12 +150,16 @@ function makeStickerReward(dice: Die[]): Reward {
 export function generateRewards(dice: Die[]): Reward[] {
   const canAddDie = dice.length < MAX_DICE;
   const upgradableCount = dice.filter((die) => die.canUpgrade).length;
+  const growableCount = dice.filter((die) => die.canGrow).length;
 
-  // Upgrade is guaranteed whenever something can be upgraded (and appears at
-  // most once — it's a single global action). The other slots are filled from a
-  // shuffled pool so add-die, sticker, and randomise rotate through the offers.
+  // Upgrade and Grow are each guaranteed whenever they have something to act on
+  // (and appear at most once — they're single global actions: upgrade lifts
+  // every tier die, grow advances every Power/Prime/Fib die). The remaining
+  // slots are filled from a shuffled pool so add-die, sticker, and randomise
+  // rotate through the offers.
   const kinds: Reward["kind"][] = [];
   if (upgradableCount > 0) kinds.push("upgrade");
+  if (growableCount > 0) kinds.push("grow");
 
   const rest: Reward["kind"][] = ["sticker", "randomise"];
   if (canAddDie) rest.push("add-die");
@@ -160,6 +172,7 @@ export function generateRewards(dice: Die[]): Reward[] {
   return kinds.slice(0, 3).map((kind) => {
     if (kind === "add-die") return makeAddDieReward();
     if (kind === "upgrade") return makeUpgradeReward(dice);
+    if (kind === "grow") return makeGrowReward(dice);
     if (kind === "randomise") return makeRandomiseReward(dice);
     return makeStickerReward(dice);
   });
@@ -174,6 +187,8 @@ export function applyReward(dice: Die[], reward: Reward): Die[] {
       const upgraded = dice.map((die) => (die.canUpgrade ? die.upgrade() : die));
       return reward.bonusDie ? [...upgraded, reward.bonusDie] : upgraded;
     }
+    case "grow":
+      return dice.map((die) => (die.canGrow ? die.upgrade() : die));
     case "sticker":
       dice[reward.dieIndex].addSticker(reward.sticker);
       return [...dice];

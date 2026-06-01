@@ -15,7 +15,47 @@ class Game {
   static QUAD_FACTOR = 8;
   static FIVE_FACTOR = 10;
   static SIX_FACTOR = 16;
+  // 12-dice pools can roll past six-of-a-kind, so the ladder keeps climbing.
+  static SEVEN_FACTOR = 20;
+  static EIGHT_FACTOR = 24;
+  static NINE_FACTOR = 28;
+  static TEN_FACTOR = 34;
+  static ELEVEN_FACTOR = 40;
+  static TWELVE_FACTOR = 50;
   static STRAIGHT_FACTOR = 6;
+
+  // Jackpot: every numeric die in the pool shows the same number (Wilds don't
+  // break it; non-numeric dice like Multi/Percent are ignored). Multiplies the
+  // whole roll, applied last — the rare "everything matched!" payoff.
+  static JACKPOT_MULTIPLIER = 10;
+
+  // Poker-style category combos. These REPLACE the individual sets they
+  // consume (no double-counting) and pay a premium over scoring those sets
+  // apart, so completing the category is always the better outcome.
+  static TWO_PAIR_FACTOR = 1.5; // × (combined bonus of the two consumed pairs)
+  static FULL_HOUSE_FACTOR = 1.5; // × (combined bonus of the consumed set + pair)
+
+  // Factor for a matched set of `count` dice (count clamped to 2..12).
+  static setFactor(count: number): number {
+    switch (Math.min(count, 12)) {
+      case 2: return Game.PAIR_FACTOR;
+      case 3: return Game.TRIPLE_FACTOR;
+      case 4: return Game.QUAD_FACTOR;
+      case 5: return Game.FIVE_FACTOR;
+      case 6: return Game.SIX_FACTOR;
+      case 7: return Game.SEVEN_FACTOR;
+      case 8: return Game.EIGHT_FACTOR;
+      case 9: return Game.NINE_FACTOR;
+      case 10: return Game.TEN_FACTOR;
+      case 11: return Game.ELEVEN_FACTOR;
+      default: return Game.TWELVE_FACTOR;
+    }
+  }
+
+  static setName(count: number): string {
+    return ["", "", "Pair", "Triple", "Quad", "Five", "Six", "Seven", "Eight",
+      "Nine", "Ten", "Eleven", "Twelve"][Math.min(count, 12)];
+  }
 
   // Constructor
   constructor() {
@@ -29,7 +69,12 @@ class Game {
     total += this.highRollBonus(dice, modifier);
     total = this.calculateStickers(total, dice);
     total = this.applyCrit(total, dice, modifier);
-    return total;
+    total = this.applyJackpot(total, dice);
+    // Multipliers, percentages and length-scaled straights can leave fractions;
+    // always round the final score up. Floor at 0 — harsh penalties (e.g. a 5×
+    // Slippery round) can drive the raw total negative, but a roll must never
+    // subtract from the round's running score.
+    return Math.max(0, Math.ceil(total));
   }
 
   // "Big Numbers": each die rolling above half its max face scores extra,
@@ -59,6 +104,19 @@ class Game {
     const mult = modifier?.critMultiplier;
     if (!mult) return total;
     return total * Math.pow(mult, this.critCount(dice));
+  }
+
+  // True when every numeric die in the pool shows the same value (and at least
+  // two do). Wilds and non-numeric dice (Multi/Percent) don't count against it.
+  isJackpot(dice: Dice): boolean {
+    const values = this.numericRolls(dice);
+    return values.length >= 2 && new Set(values).size === 1;
+  }
+
+  // "Jackpot": all numbers match — multiply the whole roll. Applied last so it
+  // scales the full total, on top of every other bonus.
+  applyJackpot(total: number, dice: Dice): number {
+    return this.isJackpot(dice) ? total * Game.JACKPOT_MULTIPLIER : total;
   }
 
   calculateDiceBonuses(total: number, dice: Dice, modifier: Modifier | null = null): number {
@@ -125,6 +183,10 @@ class Game {
       }
     }
 
+    if (this.isJackpot(dice)) {
+      bonuses.push(`JACKPOT — all numbers match! (x${Game.JACKPOT_MULTIPLIER})`);
+    }
+
     if (bonuses.length === 0) {
       bonuses.push("None!");
     }
@@ -133,20 +195,23 @@ class Game {
   }
 
   stickersApplied(dice: Dice): string[] {
-    const stickers: string[] = [];
+    // Listed in the order they apply to the score: additions first, then the
+    // multiplier-step stickers (× and %).
+    const additions: string[] = [];
+    const multipliers: string[] = [];
 
     dice.forEach((die, index) => {
       const roll = die.rolledValue;
       if (roll instanceof AdditionSticker) {
-        stickers.push(`Die ${index + 1}: +${roll.amount}`);
+        additions.push(`Die ${index + 1}: +${roll.amount}`);
       } else if (roll instanceof MultiplierSticker) {
-        stickers.push(`Die ${index + 1}: x${roll.factor}`);
+        multipliers.push(`Die ${index + 1}: x${roll.factor}`);
       } else if (roll instanceof PercentageSticker) {
-        stickers.push(`Die ${index + 1}: +${roll.percent}%`);
+        multipliers.push(`Die ${index + 1}: +${roll.percent}%`);
       }
     });
 
-    return stickers;
+    return [...additions, ...multipliers];
   }
 
   calculateBonuses(currentTotal: number, dice: Dice, modifier: Modifier | null = null): number {
@@ -214,12 +279,9 @@ class Game {
 
     // Value-scaled bonus for a matched set of `count` dice showing `value`.
     const setBonus = (value: number, count: number): { bonus: number; name: string } => {
-      if (count >= 6) return { bonus: value * Game.SIX_FACTOR, name: 'Six' };
-      if (count === 5) return { bonus: value * Game.FIVE_FACTOR, name: 'Five' };
-      if (count === 4) return { bonus: value * Game.QUAD_FACTOR, name: 'Quad' };
-      if (count === 3) return { bonus: value * Game.TRIPLE_FACTOR, name: 'Triple' };
-      if (count === 2) return { bonus: value * Game.PAIR_FACTOR * pairScale, name: 'Pair' };
-      return { bonus: 0, name: '' };
+      if (count < 2) return { bonus: 0, name: '' };
+      const scale = count === 2 ? pairScale : 1;
+      return { bonus: value * Game.setFactor(count) * scale, name: Game.setName(count) };
     };
 
     const counts = this.valueCounts(dice);
@@ -227,7 +289,8 @@ class Game {
 
     // Matched-set score when `wildsForSets` jokers are available: they all pile
     // onto the single value whose set gains the most (a lone 13 + two wilds ->
-    // triple 13). Returns the total and a scorecard line per set.
+    // triple 13). Also pays the poker-style Two Pair and Full House categories
+    // on top of the individual sets. Returns the total and a line per combo.
     const setScore = (wildsForSets: number): { total: number; lines: string[] } => {
       let wildValue: number | null = null;
       if (wildsForSets > 0) {
@@ -240,35 +303,93 @@ class Game {
           }
         }
       }
+
+      // Effective counts after the wilds land.
+      const effective = new Map<number, number>();
+      for (const [value, count] of counts) {
+        effective.set(value, value === wildValue ? count + wildsForSets : count);
+      }
+
       let setTotal = 0;
       const setLines: string[] = [];
-      for (const [value, count] of counts) {
-        const effective = value === wildValue ? count + wildsForSets : count;
-        const { bonus, name } = setBonus(value, effective);
+      // Values already spent on a category combo — they don't score again.
+      const consumed = new Set<number>();
+
+      // Full House: the highest 3+ set plus the highest separate 2+ set. Pays a
+      // premium over those two sets scored apart, and consumes both.
+      const triples = [...effective].filter(([, c]) => c >= 3).map(([v]) => v).sort((a, b) => b - a);
+      if (triples.length >= 1) {
+        const triple = triples[0];
+        const others = [...effective].filter(([v, c]) => c >= 2 && v !== triple).map(([v]) => v).sort((a, b) => b - a);
+        if (others.length >= 1) {
+          const pair = others[0];
+          const parts = setBonus(triple, effective.get(triple)!).bonus + setBonus(pair, effective.get(pair)!).bonus;
+          const bonus = Math.ceil(parts * Game.FULL_HOUSE_FACTOR);
+          setTotal += bonus;
+          setLines.push(`Full House — ${triple}s full of ${pair}s (+${bonus})`);
+          consumed.add(triple);
+          consumed.add(pair);
+        }
+      }
+
+      // Two Pair: the two highest unconsumed pairs, scored as one combo instead
+      // of two separate pairs.
+      const pairs = [...effective].filter(([v, c]) => c === 2 && !consumed.has(v)).map(([v]) => v).sort((a, b) => b - a);
+      if (pairs.length >= 2) {
+        const parts = setBonus(pairs[0], 2).bonus + setBonus(pairs[1], 2).bonus;
+        const bonus = Math.ceil(parts * Game.TWO_PAIR_FACTOR);
+        setTotal += bonus;
+        setLines.push(`Two Pair (+${bonus})`);
+        consumed.add(pairs[0]);
+        consumed.add(pairs[1]);
+      }
+
+      // Everything not folded into a category scores as its own set.
+      for (const [value, count] of effective) {
+        if (consumed.has(value)) continue;
+        const { bonus, name } = setBonus(value, count);
         if (bonus > 0) {
           setTotal += bonus;
           setLines.push(`${name} of ${value}${value === wildValue ? ' (wild)' : ''} (+${bonus})`);
         }
       }
+
       return { total: setTotal, lines: setLines };
     };
 
-    // Candidate straights: every length-`needs` window with at least one real
-    // die in it (wilds fill the gaps but can't fabricate a straight from
-    // nothing). Each records how many wilds it would consume.
+    // Candidate straights: every run of length `length` (from `needs` up) with
+    // at least one real die in it (wilds fill gaps but can't fabricate a run
+    // from nothing). Longer runs pay proportionally more (× length / needs).
+    //
+    // We scan windows anchored on the rolled values, NOT the raw integer range:
+    // a valid run can only span present values plus up to `wildCount` filler
+    // slots, so its `high` is within wildCount of some present value and its
+    // length can't exceed (present count + wildCount). Iterating face magnitude
+    // instead would blow up for big-faced dice (a grown Power die rolling
+    // millions), so cost stays tied to the dice count, not the face values.
     const needs = combo?.straightNeeds ?? 5;
     const straightScale = combo?.straightScale ?? 1;
     const present = new Set(this.numericRolls(dice));
-    const maxPresent = present.size ? Math.max(...present) : 0;
-    const straights: { high: number; wildsUsed: number }[] = [];
-    for (let high = maxPresent + wildCount; high >= needs; high--) {
-      const low = high - needs + 1;
-      if (low < 1) continue;
-      let inWindow = 0;
-      for (let value = low; value <= high; value++) if (present.has(value)) inWindow++;
-      const wildsUsed = needs - inWindow;
-      if (inWindow >= 1 && wildsUsed <= wildCount) {
-        straights.push({ high, wildsUsed });
+    const presentValues = [...present];
+    const maxLength = presentValues.length + wildCount;
+    // Highs worth trying: each present value, plus up to wildCount slots of
+    // wild extension above it.
+    const highCandidates = new Set<number>();
+    for (const value of presentValues) {
+      for (let extend = 0; extend <= wildCount; extend++) highCandidates.add(value + extend);
+    }
+    const straights: { high: number; length: number; wildsUsed: number; bonus: number }[] = [];
+    for (const high of highCandidates) {
+      for (let length = needs; length <= maxLength; length++) {
+        const low = high - length + 1;
+        if (low < 1) continue;
+        let inWindow = 0;
+        for (const value of presentValues) if (value >= low && value <= high) inWindow++;
+        const wildsUsed = length - inWindow;
+        if (inWindow >= 1 && wildsUsed <= wildCount) {
+          const bonus = Math.ceil(high * Game.STRAIGHT_FACTOR * straightScale * (length / needs));
+          straights.push({ high, length, wildsUsed, bonus });
+        }
       }
     }
 
@@ -277,15 +398,15 @@ class Game {
     // straight with the remaining wilds spent on sets.
     let bestTotal = 0;
     let bestLines: string[] = [];
-    const consider = (straight: { high: number; wildsUsed: number } | null) => {
+    const consider = (straight: { high: number; length: number; wildsUsed: number; bonus: number } | null) => {
       const used = straight ? straight.wildsUsed : 0;
       const sets = setScore(wildCount - used);
       let candidate = sets.total;
       const candidateLines = [...sets.lines];
       if (straight) {
-        const bonus = straight.high * Game.STRAIGHT_FACTOR * straightScale;
-        candidate += bonus;
-        candidateLines.push(`Straight to ${straight.high}${used > 0 ? ' (wild)' : ''} (+${bonus})`);
+        candidate += straight.bonus;
+        const label = straight.length > needs ? `Straight (${straight.length}) to ${straight.high}` : `Straight to ${straight.high}`;
+        candidateLines.push(`${label}${used > 0 ? ' (wild)' : ''} (+${straight.bonus})`);
       }
       if (candidate > bestTotal) {
         bestTotal = candidate;

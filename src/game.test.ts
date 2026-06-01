@@ -47,10 +47,10 @@ it('calculates a total score with a pair', () => {
       new DieD6(1),
     ];
     // Subtotal = 3 + 3 + 5 + 5 + 1 = 17
-    // Pair of 3 (+9) + Pair of 5 (+15) = 24
+    // Two Pair replaces the two pairs: ceil((15 + 9) * 1.5) = 36
     // Min roll penalty = -3
-    // Total = 38
-    expect(game.calculate(dice)).toBe(38);
+    // Total = 50
+    expect(game.calculate(dice)).toBe(50);
   });
 
   it('calculates a total score with a triple', () => {
@@ -80,8 +80,8 @@ it('calculates a total score with a pair', () => {
     // Subtotal = 6 + 6 + 6 + 6 = 24
     // Quad of 6 = 6 * 8 = 48
     // Max roll bonuses = 3 * 4 = 12
-    // Total = 84
-    expect(game.calculate(dice)).toBe(84);
+    // (24 + 48 + 12) = 84, then JACKPOT (all match) x10 = 840
+    expect(game.calculate(dice)).toBe(840);
   });
 
   it('calculates a total score with a straight', () => {
@@ -100,9 +100,8 @@ it('calculates a total score with a pair', () => {
     expect(game.calculate(dice)).toBe(42);
   });
 
-  it('calculates a score with a straight + six die', () => {
+  it('calculates a score with a six-long straight', () => {
     const game = new Game();
-    // Straight 2-6 (+36), plus +3/-3 max/min, on subtotal 21 = 57
     const dice = [
       new DieD6(1),
       new DieD6(2),
@@ -113,11 +112,87 @@ it('calculates a total score with a pair', () => {
     ];
 
     // Subtotal = 1 + 2 + 3 + 4 + 5 + 6 = 21
-    // Best straight is 2-6, so Straight to 6 = 6 * 6 = 36
+    // A full 1-6 run is a length-6 straight: ceil(6 * 6 * (6/5)) = ceil(43.2) = 44
     // Max roll bonus = 3 (the 6)
     // Min roll penalty = -3 (the 1)
-    // Total = 21 + 36 + 3 - 3 = 57
-    expect(game.calculate(dice)).toBe(57);
+    // Total = 21 + 44 + 3 - 3 = 65
+    expect(game.calculate(dice)).toBe(65);
+  });
+
+  it('scores a full house (triple + pair)', () => {
+    const game = new Game();
+    const dice = [
+      new DieD6(3),
+      new DieD6(3),
+      new DieD6(3),
+      new DieD6(5),
+      new DieD6(5),
+    ];
+    // Subtotal = 3 + 3 + 3 + 5 + 5 = 19
+    // Full House replaces the triple + pair: ceil((18 + 15) * 1.5) = 50
+    // Total = 19 + 50 = 69
+    expect(game.calculate(dice)).toBe(69);
+  });
+
+  it('names the full house with its values ("Ns full of Ms")', () => {
+    const game = new Game();
+    const dice = [
+      new DieD6(3), new DieD6(3), new DieD6(3),
+      new DieD6(4), new DieD6(4),
+    ];
+    const lines = game.bonusesApplied(dice);
+    expect(lines.some((l) => l.startsWith('Full House — 3s full of 4s'))).toBe(true);
+  });
+
+  it('scores a huge-faced die fast (straight scan is bounded by dice, not face size)', () => {
+    const game = new Game();
+    // A grown Power die can reach faces in the millions; the straight detector
+    // must not iterate the integer range up to that value.
+    const dice = [new DiePower(undefined, 134217728), new DieD6(3), new DieD6(4)];
+    const start = performance.now();
+    const score = game.calculate(dice, null);
+    expect(performance.now() - start).toBeLessThan(50);
+    // Subtotal 134217728 + 3 + 4 = 134217735, no combos (all distinct).
+    expect(score).toBe(134217735);
+  });
+
+  it('multiplies the whole roll by 10 when every numeric die matches (jackpot)', () => {
+    const game = new Game();
+    const dice = [new DieD8(6), new DieD8(6), new DieD8(6), new DieD8(6)];
+    // Subtotal = 24. Quad of 6 = 6 * 8 = 48. 6 is not d8's max, so no max bonus.
+    // (24 + 48) = 72, then JACKPOT x10 = 720.
+    expect(game.calculate(dice)).toBe(720);
+    expect(game.isJackpot(dice)).toBe(true);
+    expect(game.bonusesApplied(dice).some((l) => l.startsWith('JACKPOT'))).toBe(true);
+  });
+
+  it('does not jackpot when the numbers differ, or with only one numeric die', () => {
+    const game = new Game();
+    expect(game.isJackpot([new DieD8(6), new DieD8(5)])).toBe(false);
+    expect(game.isJackpot([new DieD8(6)])).toBe(false);
+  });
+
+  it('lets a wild complete a jackpot (wilds do not break the match)', () => {
+    const game = new Game();
+    const dice = [new DieD8(6), new DieD8(6), new DieWild(new Wild())];
+    // Two 6s + wild -> triple of 6 = 6 * 6 = 36. Subtotal 12. (12 + 36) x10 = 480.
+    expect(game.isJackpot(dice)).toBe(true);
+    expect(game.calculate(dice)).toBe(480);
+  });
+
+  it('never returns a negative roll score (floored at 0)', () => {
+    const game = new Game();
+    // All minimum rolls under a harsh penalty multiplier would go negative.
+    const dice = [new DieD12(1), new DieD12(1), new DieD12(1)];
+    expect(game.calculate(dice, { name: '', description: '', penaltyScale: 5 })).toBe(0);
+  });
+
+  it('scores seven of a kind above six of a kind', () => {
+    const game = new Game();
+    const dice = Array.from({ length: 7 }, () => new DieD6(3));
+    // Subtotal = 21. Seven of 3 = 3 * 20 = 60. (3 is neither max nor min.)
+    // (21 + 60) = 81, then JACKPOT (all match) x10 = 810
+    expect(game.calculate(dice)).toBe(810);
   });
 
   it('calculates fives', () => {
@@ -149,8 +224,8 @@ it('calculates a total score with a pair', () => {
     ];
     // Subtotal = 2 + 2 + 2 + 2 + 2 + 2 = 12
     // Six of 2 = 2 * 16 = 32  (2 is not the min face of a d6, so no penalty)
-    // Total = 44
-    expect(game.calculate(dice)).toBe(44);
+    // (12 + 32) = 44, then JACKPOT (all match) x10 = 440
+    expect(game.calculate(dice)).toBe(440);
   });
 
   it('calculates a total score including a multiplier sticker', () => {
@@ -231,17 +306,19 @@ it('calculates a total score with a pair', () => {
     // Max roll bonuses = 3 * 5 = 15
     // Total before sticker = 105
     // After sticker = 105 * 2 = 210
-    expect(game.calculate(dice)).toBe(210);
+    // All numeric dice show 6 (sticker die is non-numeric), so JACKPOT x10 = 2100
+    expect(game.calculate(dice)).toBe(2100);
   });
 
   it('calculates 6, 6, 6, 6, 6, 6, 6, x2', () => {
     const game = new Game();
     const sticker = new MultiplierSticker(2);
     // Subtotal = 6 + 6 + 6 + 6 + 6 + 6 + 6 = 42
-    // Six of 6 = 6 * 16 = 96 (count >= 6 all score as a six-of-a-kind)
+    // Seven of 6 = 6 * 20 = 120 (seven-of-a-kind tier)
     // Max roll bonuses = 3 * 7 = 21
-    // Total before sticker = 159
-    // After sticker = 159 * 2 = 318
+    // Total before sticker = 183
+    // After sticker = 183 * 2 = 366
+    // All numeric dice show 6 (sticker die is non-numeric), so JACKPOT x10 = 3660
     const dice = [
       new DieD6(6),
       new DieD6(6),
@@ -252,7 +329,7 @@ it('calculates a total score with a pair', () => {
       new DieD6(6),
       new DieD6(sticker),
     ];
-    expect(game.calculate(dice)).toBe(318);
+    expect(game.calculate(dice)).toBe(3660);
   });
 
   it('detects a straight when a duplicate value is present', () => {
@@ -318,7 +395,7 @@ it('calculates a total score with a pair', () => {
   it('lets wild dice complete a matched-set combo', () => {
     const game = new Game();
     const dice = [
-      new DiePower(8),
+      new DiePower(undefined, 8),
       new DieWild(new Wild()),
       new DieWild(new Wild()),
     ];
@@ -330,15 +407,15 @@ it('calculates a total score with a pair', () => {
   it('sends wilds to the matched set that gains the most', () => {
     const game = new Game();
     const dice = [
-      new DiePower(2),
-      new DiePower(2),
-      new DiePower(16),
+      new DiePower(undefined, 2),
+      new DiePower(undefined, 2),
+      new DiePower(undefined, 16),
       new DieWild(new Wild()),
     ];
-    // Subtotal = 20. The wild is worth more on the 16 (pair = 48) than as a
-    // third 2 (triple 12 vs pair 6, +6). Pair of 2 = 6, Pair of 16 = 48.
-    // Total = 20 + 6 + 48 = 74
-    expect(game.calculate(dice)).toBe(74);
+    // Subtotal = 20. The wild lands on the 16 (pair of 16 beats a third 2),
+    // leaving pairs of 16 and 2 -> Two Pair: ceil((48 + 6) * 1.5) = 81.
+    // Total = 20 + 81 = 101
+    expect(game.calculate(dice)).toBe(101);
   });
 
   it('lets a wild fill the gap in a straight', () => {
