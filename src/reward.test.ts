@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateRewards, applyReward, MAX_DICE } from './reward';
-import { DieD6, DieD20 } from './die';
+import { DieD6, DieD20, DiePower, DiePrime, DieFib } from './die';
 import { Addition, Multiplier } from './sticker';
 
 describe('generateRewards', () => {
@@ -64,6 +64,25 @@ describe('applyReward', () => {
     const dice = [new DieD6(), new DieD6(), new DieD6(), new DieD20()];
     const upgrade = generateRewards(dice).find((r) => r.kind === 'upgrade');
     if (upgrade?.kind === 'upgrade') expect(upgrade.bonusDie).toBeUndefined();
+  });
+
+  it('offers a grow reward only when a Power/Prime/Fib die is present', () => {
+    const without = generateRewards([new DieD6(), new DieD6()]);
+    expect(without.some((r) => r.kind === 'grow')).toBe(false);
+
+    // Fill the pool with growable dice so the grow slot is bound to appear.
+    const withGrowable = [new DiePower(), new DiePrime(), new DieFib(), new DiePower()];
+    const rewards = generateRewards(withGrowable);
+    expect(rewards.some((r) => r.kind === 'grow')).toBe(true);
+  });
+
+  it('grows every Power/Prime/Fib die one step, leaving other dice alone', () => {
+    const d6 = new DieD6();
+    const dice = [new DiePower(), new DiePrime(), d6];
+    const next = applyReward(dice, { kind: 'grow', label: '' });
+    expect((next[0].faces as number[])).toEqual([1, 2, 4, 8, 16, 32, 64]);
+    expect((next[1].faces as number[])).toEqual([2, 3, 5, 7, 11, 13, 17]);
+    expect(next[2]).toBe(d6); // untouched
   });
 
   it('applies a multiplier sticker to the die at the given index', () => {

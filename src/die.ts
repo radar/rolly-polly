@@ -16,6 +16,15 @@ class BaseDie {
   faces: Face[];
   rolledValue: RolledValue = null;
   canUpgrade = true;
+  // Pattern dice (Odd, Even, Fib, Prime, Power) grow by appending the next
+  // number in their sequence rather than swapping to a higher tier. `canGrow`
+  // flags the ones the standalone "grow" reward targets (Power/Prime/Fib);
+  // Odd/Even instead ride the regular "upgrade all dice" reward (canUpgrade).
+  canGrow = false;
+  // Optional per-face roll weights (parallel to `faces`). When null every face
+  // is equally likely; otherwise a face's odds are its weight / total weight.
+  // Lets a die bias its faces without changing the face pool itself.
+  weights: number[] | null = null;
 
   constructor(faces: Face[], rolledValue: RolledValue = null) {
     this.faces = faces;
@@ -71,8 +80,16 @@ class BaseDie {
   }
 
   roll(): Face {
-    const randomIndex = Math.floor(Math.random() * this.faces.length);
-    this.rolledValue = this.faces[randomIndex];
+    let index: number;
+    if (this.weights && this.weights.length === this.faces.length) {
+      const total = this.weights.reduce((sum, w) => sum + w, 0);
+      let r = Math.random() * total;
+      index = 0;
+      while (index < this.weights.length - 1 && (r -= this.weights[index]) >= 0) index++;
+    } else {
+      index = Math.floor(Math.random() * this.faces.length);
+    }
+    this.rolledValue = this.faces[index];
     return this.rolledValue;
   }
 
@@ -212,18 +229,32 @@ class DieD20 extends BaseDie {
 class DieOdd extends BaseDie {
   name = "Dodd";
   className = "die-dodd"
-  canUpgrade = false;
-  constructor(rolledValue: RolledValue = null) {
-    super([1, 3, 5, 7, 9], rolledValue);
+  // Odd/Even ride both rewards: the regular Upgrade sweep (canUpgrade) and the
+  // standalone Grow reward (canGrow). Either one appends their next number.
+  canGrow = true;
+  constructor(faces: number[] = [1, 3, 5, 7, 9], rolledValue: RolledValue = null) {
+    super(faces, rolledValue);
+  }
+
+  // Append the next odd number (last + 2).
+  upgrade(): Die {
+    const faces = this.faces as number[];
+    return new DieOdd([...faces, faces[faces.length - 1] + 2], this.rolledValue);
   }
 }
 
 class DieEven extends BaseDie {
   name = "Deven";
   className = "die-deven"
-  canUpgrade = false;
-  constructor(rolledValue: RolledValue = null) {
-    super([2, 4, 6, 8, 10], rolledValue);
+  canGrow = true;
+  constructor(faces: number[] = [2, 4, 6, 8, 10], rolledValue: RolledValue = null) {
+    super(faces, rolledValue);
+  }
+
+  // Append the next even number (last + 2).
+  upgrade(): Die {
+    const faces = this.faces as number[];
+    return new DieEven([...faces, faces[faces.length - 1] + 2], this.rolledValue);
   }
 }
 
@@ -231,10 +262,18 @@ class DieFib extends BaseDie {
   name = "Dfib";
   className = "die-dfib"
   canUpgrade = false;
+  canGrow = true;
 
   // Default Fibonacci faces up to 21
   constructor(faces: number[] = [1, 1, 2, 3, 5, 8, 13, 21], rolledValue: RolledValue = null) {
     super(faces, rolledValue);
+  }
+
+  // Append the next Fibonacci number (sum of the last two).
+  upgrade(): Die {
+    const faces = this.faces as number[];
+    const n = faces.length;
+    return new DieFib([...faces, faces[n - 1] + faces[n - 2]], this.rolledValue);
   }
 }
 
@@ -245,7 +284,7 @@ class DieMultiplier extends BaseDie {
 
   constructor(rolledValue: RolledValue = null) {
     // Whole-total multiplier, so faces center near 1 with a real downside
-    // (a 0 "whiff") to keep it a gamble rather than free score. EV = 1.3.
+    // (a 0 "whiff") to keep it a gamble rather than free score.
     super([
       StickerFactory.createMultiplier(0),
       StickerFactory.createMultiplier(0.5),
@@ -253,6 +292,10 @@ class DieMultiplier extends BaseDie {
       StickerFactory.createMultiplier(2),
       StickerFactory.createMultiplier(3),
     ], rolledValue);
+    // The low faces are the punishing ones (a 0 wipes the whole roll, a 0.5
+    // halves it), so weight them down without touching the face pool: 0 ~8%,
+    // 0.5 ~17%, and x1/x2/x3 ~25% each. EV rises from the uniform 1.3 to ~1.58.
+    this.weights = [1, 2, 3, 3, 3];
   }
 }
 
@@ -263,7 +306,7 @@ class DiePercent extends BaseDie {
 
   constructor(rolledValue: RolledValue = null) {
     // A pure upside die: each face boosts the whole score by that percent. A 0
-    // face keeps it a gamble rather than free points. EV = +25%.
+    // face keeps it a gamble rather than free points.
     super([
       new PercentageSticker(0),
       new PercentageSticker(10),
@@ -272,16 +315,37 @@ class DiePercent extends BaseDie {
       new PercentageSticker(40),
       new PercentageSticker(50),
     ], rolledValue);
+    // Down-weight the 0% whiff (~9% vs the uniform ~17%) without touching the
+    // face pool. EV rises from +25% to ~+27%.
+    this.weights = [1, 2, 2, 2, 2, 2];
   }
 }
+
+const nextPrime = (after: number): number => {
+  const isPrime = (n: number): boolean => {
+    if (n < 2) return false;
+    for (let d = 2; d * d <= n; d++) if (n % d === 0) return false;
+    return true;
+  };
+  let candidate = after + 1;
+  while (!isPrime(candidate)) candidate++;
+  return candidate;
+};
 
 class DiePrime extends BaseDie {
   name = "Prime";
   className = "die-dprime"
   canUpgrade = false;
-  constructor(rolledValue: RolledValue = null) {
+  canGrow = true;
+  constructor(faces: number[] = [2, 3, 5, 7, 11, 13], rolledValue: RolledValue = null) {
     // Sparse spread — near-impossible to pair or straight, a raw-value gamble.
-    super([2, 3, 5, 7, 11, 13], rolledValue);
+    super(faces, rolledValue);
+  }
+
+  // Append the next prime above the current highest.
+  upgrade(): Die {
+    const faces = this.faces as number[];
+    return new DiePrime([...faces, nextPrime(faces[faces.length - 1])], this.rolledValue);
   }
 }
 
@@ -289,9 +353,16 @@ class DiePower extends BaseDie {
   name = "Power";
   className = "die-dpower"
   canUpgrade = false;
-  constructor(rolledValue: RolledValue = null) {
+  canGrow = true;
+  constructor(faces: number[] = [1, 2, 4, 8, 16, 32], rolledValue: RolledValue = null) {
     // Doubling ladder: a huge top end (32) but weak combo odds. High variance.
-    super([1, 2, 4, 8, 16, 32], rolledValue);
+    super(faces, rolledValue);
+  }
+
+  // Append the next power of two (last × 2).
+  upgrade(): Die {
+    const faces = this.faces as number[];
+    return new DiePower([...faces, faces[faces.length - 1] * 2], this.rolledValue);
   }
 }
 
